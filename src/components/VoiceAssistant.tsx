@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, X, Volume2, Sparkles, Loader2 } from 'lucide-react';
+import { Mic, MicOff, X, Volume2, VolumeX, Sparkles, Loader2, User, Bot } from 'lucide-react';
 import { generateAIContent } from '@/services/aiService';
 import { useApp } from '@/lib/AppContext';
+
+interface Message {
+  role: 'user' | 'assistant';
+  text: string;
+  timestamp: Date;
+}
 
 export function VoiceAssistant() {
   const { language, isVoiceAssistantOpen, setIsVoiceAssistantOpen } = useApp();
@@ -10,6 +16,8 @@ export function VoiceAssistant() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [response, setResponse] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const recognitionRef = useRef<any>(null);
   const synthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
 
@@ -31,20 +39,20 @@ export function VoiceAssistant() {
       recognition.onstart = () => {
         setIsListening(true);
         setTranscript('');
-        setResponse('');
       };
 
       recognition.onresult = (event: any) => {
         const current = event.resultIndex;
         const resultTranscript = event.results[current][0].transcript;
         setTranscript(resultTranscript);
+        // If this is a final result, process it
+        if (event.results[current].isFinal) {
+          processVoiceCommand(resultTranscript);
+        }
       };
 
       recognition.onend = () => {
         setIsListening(false);
-        if (transcript.trim()) {
-          processVoiceCommand(transcript);
-        }
       };
 
       recognition.onerror = (event: any) => {
@@ -54,10 +62,64 @@ export function VoiceAssistant() {
 
       recognitionRef.current = recognition;
     }
-  }, [transcript, language]);
+  }, [language]);
+
+  // Cleanup when assistant closes
+  useEffect(() => {
+    if (!isVoiceAssistantOpen) {
+      stopSpeaking();
+      stopListening();
+    }
+  }, [isVoiceAssistantOpen]);
+
+  // Monitor speech synthesis to update isSpeaking state
+  useEffect(() => {
+    const handleSpeechStart = () => setIsSpeaking(true);
+    const handleSpeechEnd = () => setIsSpeaking(false);
+    
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.addEventListener('start', handleSpeechStart);
+      window.speechSynthesis.addEventListener('end', handleSpeechEnd);
+      window.speechSynthesis.addEventListener('error', handleSpeechEnd);
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.removeEventListener('start', handleSpeechStart);
+        window.speechSynthesis.removeEventListener('end', handleSpeechEnd);
+        window.speechSynthesis.removeEventListener('error', handleSpeechEnd);
+      }
+    };
+  }, []);
+
+  const startListening = () => {
+    stopSpeaking();
+    if (recognitionRef.current && !isListening) {
+      recognitionRef.current.start();
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+    }
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      stopSpeaking();
+      startListening();
+    }
+  };
 
   const processVoiceCommand = async (command: string) => {
+    // Add user message to history
+    setMessages(prev => [...prev, { role: 'user', text: command, timestamp: new Date() }]);
     setIsProcessing(true);
+    setResponse('');
+    
     try {
       const result = await generateAIContent({
         contents: [{ parts: [{ text: command }] }],
@@ -72,10 +134,13 @@ export function VoiceAssistant() {
 
       const aiResponse = result.text || "I'm sorry, I didn't quite catch that. Could you repeat it?";
       setResponse(aiResponse);
+      setMessages(prev => [...prev, { role: 'assistant', text: aiResponse, timestamp: new Date() }]);
       speak(aiResponse);
     } catch (error) {
       console.error('AI processing error:', error);
-      setResponse("I'm having a little trouble connecting right now. Let's try again in a moment.");
+      const errorMsg = "I'm having a little trouble connecting right now. Let's try again in a moment.";
+      setResponse(errorMsg);
+      setMessages(prev => [...prev, { role: 'assistant', text: errorMsg, timestamp: new Date() }]);
     } finally {
       setIsProcessing(false);
     }
@@ -97,34 +162,26 @@ export function VoiceAssistant() {
       
       utterance.rate = 0.9; // Slightly slower for better comprehension
       utterance.pitch = 1.1; // Friendly pitch
+      
       synthesisRef.current = utterance;
       window.speechSynthesis.speak(utterance);
     }
   };
 
-  const toggleAssistant = () => {
-    if (isVoiceAssistantOpen) {
+  const stopSpeaking = () => {
+    if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      recognitionRef.current?.stop();
+      setIsSpeaking(false);
     }
-    setIsVoiceAssistantOpen(!isVoiceAssistantOpen);
-  };
-
-  const startListening = () => {
-    window.speechSynthesis.cancel();
-    recognitionRef.current?.start();
-  };
-
-  const stopListening = () => {
-    recognitionRef.current?.stop();
   };
 
   return (
     <>
       {/* Floating Trigger Button */}
       <button
-        onClick={toggleAssistant}
-        className="hidden"
+        onClick={() => setIsVoiceAssistantOpen(!isVoiceAssistantOpen)}
+        className="fixed bottom-20 right-6 z-50 w-14 h-14 bg-primary text-white rounded-full shadow-lg shadow-primary/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+        aria-label="Toggle voice assistant"
       >
         {isVoiceAssistantOpen ? <X className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
       </button>
@@ -136,78 +193,190 @@ export function VoiceAssistant() {
             initial={{ opacity: 0, y: 100, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.9 }}
-            className="fixed bottom-52 right-6 left-6 md:left-auto md:w-96 z-[60] bg-white rounded-3xl shadow-2xl border border-surface-container-highest overflow-hidden"
+            className="fixed bottom-32 right-6 left-6 md:left-auto md:w-96 z-[60] bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-surface-container-highest overflow-hidden flex flex-col max-h-[500px]"
           >
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2 text-primary">
-                  <Sparkles className="w-5 h-5 fill-current" />
-                  <span className="font-headline font-bold">Jumu Ai Assistant</span>
-                </div>
-                <button onClick={toggleAssistant} className="text-stone-400 hover:text-stone-600">
+            {/* Header */}
+            <div className="p-4 border-b border-surface-container-high flex items-center justify-between bg-primary/5">
+              <div className="flex items-center gap-2 text-primary">
+                <Sparkles className="w-5 h-5 fill-current" />
+                <span className="font-headline font-bold">Jumu Ai Voice</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {isSpeaking && (
+                  <span className="text-xs bg-primary text-white px-2 py-1 rounded-full flex items-center gap-1">
+                    <Volume2 className="w-3 h-3" />
+                    Speaking
+                  </span>
+                )}
+                <button 
+                  onClick={() => setIsVoiceAssistantOpen(false)} 
+                  className="text-stone-400 hover:text-stone-600 p-1"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
+            </div>
 
-              <div className="min-h-[120px] mb-8 flex flex-col justify-center text-center">
-                {isListening ? (
-                  <div className="space-y-4">
-                    <div className="flex justify-center gap-1">
+            {/* Conversation History */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.length === 0 && !transcript && !response && (
+                <div className="text-center text-stone-400 py-8">
+                  <Mic className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">Tap the microphone and speak</p>
+                  <p className="text-xs mt-1">Your speech will appear as text</p>
+                </div>
+              )}
+              
+              {messages.map((msg, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {msg.role === 'assistant' && (
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Bot className="w-4 h-4 text-primary" />
+                    </div>
+                  )}
+                  <div className={`rounded-2xl px-4 py-3 max-w-[85%] ${
+                    msg.role === 'user' 
+                      ? 'bg-primary text-white rounded-br-md' 
+                      : 'bg-surface-container-high text-on-surface rounded-bl-md'
+                  }`}>
+                    <p className="text-sm leading-relaxed">{msg.text}</p>
+                    <p className={`text-xs mt-1 ${msg.role === 'user' ? 'text-white/70' : 'text-stone-400'}`}>
+                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  {msg.role === 'user' && (
+                    <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center flex-shrink-0">
+                      <User className="w-4 h-4 text-on-surface-variant" />
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+
+              {/* Current transcript (interim) */}
+              {isListening && transcript && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-end gap-3"
+                >
+                  <div className="rounded-2xl px-4 py-3 max-w-[85%] bg-primary/80 text-white rounded-br-md">
+                    <p className="text-sm leading-relaxed italic">{transcript}</p>
+                    <div className="flex gap-1 mt-2">
                       {[1, 2, 3, 4, 5].map((i) => (
                         <motion.div
                           key={i}
-                          animate={{ height: [10, 30, 10] }}
+                          animate={{ height: [4, 12, 4] }}
                           transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.1 }}
-                          className="w-1 bg-primary rounded-full"
+                          className="w-0.5 bg-white rounded-full"
                         />
                       ))}
                     </div>
-                    <p className="text-on-surface-variant font-medium italic">
-                      {transcript || "Listening..."}
-                    </p>
                   </div>
-                ) : isProcessing ? (
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                    <p className="text-on-surface-variant font-medium">Thinking...</p>
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <User className="w-4 h-4 text-primary animate-pulse" />
                   </div>
-                ) : response ? (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="space-y-4"
-                  >
-                    <p className="text-lg font-medium text-on-surface leading-relaxed">
-                      {response}
-                    </p>
-                    <div className="flex justify-center">
-                      <Volume2 className="w-5 h-5 text-primary animate-pulse" />
-                    </div>
-                  </motion.div>
-                ) : (
-                  <p className="text-on-surface-variant font-medium">
-                    Tap the microphone and tell me how I can help you today.
-                  </p>
-                )}
-              </div>
+                </motion.div>
+              )}
 
-              <div className="flex justify-center">
+              {/* Current processing/response */}
+              {isProcessing && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex gap-3"
+                >
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="rounded-2xl px-4 py-3 bg-surface-container-high">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                      <span className="text-sm text-on-surface-variant">Thinking...</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Current response with TTS indicator */}
+              {response && !isProcessing && messages[messages.length - 1]?.role !== 'assistant' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex gap-3"
+                >
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="rounded-2xl px-4 py-3 max-w-[85%] bg-surface-container-high text-on-surface rounded-bl-md">
+                    <p className="text-sm leading-relaxed">{response}</p>
+                    {isSpeaking && (
+                      <div className="flex items-center gap-2 mt-2 text-primary">
+                        <Volume2 className="w-3 h-3 animate-pulse" />
+                        <span className="text-xs">Speaking...</span>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Scroll anchor */}
+              <div ref={(el) => el && el.scrollIntoView({ behavior: 'smooth' })} />
+            </div>
+
+            {/* Controls */}
+            <div className="p-4 border-t border-surface-container-high bg-surface-container-low">
+              <div className="flex items-center justify-center gap-4">
                 <button
-                  onClick={isListening ? stopListening : startListening}
-                  className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
+                  onClick={toggleListening}
+                  disabled={isProcessing}
+                  className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-lg ${
                     isListening
                       ? 'bg-error text-white animate-pulse'
-                      : 'bg-primary text-white shadow-lg hover:scale-105'
-                  }`}
+                      : isSpeaking
+                        ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                        : 'bg-primary text-white hover:scale-105'
+                  } disabled:opacity-50`}
+                  aria-label={isListening ? "Stop listening" : "Start listening"}
                 >
-                  {isListening ? <MicOff className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
+                  {isSpeaking ? (
+                    <Volume2 className="w-7 h-7" />
+                  ) : isListening ? (
+                    <MicOff className="w-7 h-7" />
+                  ) : (
+                    <Mic className="w-7 h-7" />
+                  )}
                 </button>
+                {isSpeaking && (
+                  <button
+                    onClick={stopSpeaking}
+                    className="p-3 bg-surface border border-surface-container-high rounded-full hover:bg-surface-container-high transition-all"
+                    aria-label="Stop speaking"
+                  >
+                    <VolumeX className="w-5 h-5 text-on-surface-variant" />
+                  </button>
+                )}
               </div>
-            </div>
-            
-            <div className="bg-surface-container-low p-4 text-center">
-              <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400">
-                Powered by Jumu Ai
+              {messages.length > 0 && (
+                <button
+                  onClick={() => {
+                    setMessages([]);
+                    setResponse('');
+                    setTranscript('');
+                    stopSpeaking();
+                    stopListening();
+                  }}
+                  className="mt-3 w-full text-xs text-stone-400 hover:text-stone-600 transition-colors"
+                >
+                  Clear conversation
+                </button>
+              )}
+              <p className="text-xs text-center text-stone-400 mt-2">
+                {isListening ? 'Listening...' : isSpeaking ? 'Speaking...' : 'Tap to speak'}
               </p>
             </div>
           </motion.div>

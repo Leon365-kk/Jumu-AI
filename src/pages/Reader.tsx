@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'motion/react';
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Sparkles, Wand2, FileText, Type, AlignLeft, AlignCenter, AlignRight, Plus, Minus, Play, Pause, Upload, Clipboard, Volume2, Info, Brain, CheckCircle2, XCircle, Loader2, ChevronLeft, ChevronRight, BookOpen, Library, Mic, Eye, EyeOff, BookMarked } from 'lucide-react';
@@ -20,6 +20,8 @@ const BOOK_CACHE_PREFIX = 'jumu:book:text:v1';
 const BOOK_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const MIN_MEANINGFUL_TEXT_LENGTH = 500;
 const BOOK_FETCH_TIMEOUT_MS = 10000;
+const READING_PROGRESS_SYNC_INTERVAL_MS = 30000;
+const MIN_PROGRESS_MINUTES = 0.05;
 
 type CachedBookPayload = {
   text: string;
@@ -57,6 +59,7 @@ export default function Reader() {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const [lastVoiceCommand, setLastVoiceCommand] = useState<string | null>(null);
   const [isLineFocus, setIsLineFocus] = useState(false);
   const [focusY, setFocusY] = useState(0);
   const [persona, setPersona] = useState<'teacher' | 'friend' | 'narrator'>('narrator');
@@ -65,8 +68,6 @@ export default function Reader() {
   const [isChunked, setIsChunked] = useState(false);
   const [isBionic, setIsBionic] = useState(false);
   const [currentCharIndex, setCurrentCharIndex] = useState(0);
-  const [startTime, setStartTime] = useState<number | null>(null);
-  const [reReadCount, setReReadCount] = useState(0);
   
   // Quiz states
   const [showQuiz, setShowQuiz] = useState(false);
@@ -95,6 +96,8 @@ export default function Reader() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const lastLoadedBookUrlRef = useRef<string | null>(null);
+  const readingSessionStartRef = useRef<number | null>(null);
+  const visitedPagesRef = useRef<Set<string>>(new Set());
 
   const getBookCacheKey = (url: string) => `${BOOK_CACHE_PREFIX}:${url}`;
 
@@ -209,7 +212,7 @@ export default function Reader() {
 
       if (lastLoadedBookUrlRef.current !== state.bookUrl) {
         lastLoadedBookUrlRef.current = state.bookUrl;
-        fetchBookContent(state.bookUrl);
+        fetchBookContent(state.bookUrl, state.bookId || null);
       }
     }
   }, [location]);
@@ -260,14 +263,14 @@ export default function Reader() {
     }
   };
 
-  const fetchBookContent = async (url: string) => {
+  const fetchBookContent = async (url: string, sourceBookId: number | null = null) => {
     setIsBookLoading(true);
     let rawText = "";
     try {
       const cachedText = readBookFromCache(url);
       if (cachedText) {
         setText(cachedText);
-        paginateText(cachedText);
+        paginateText(cachedText, sourceBookId);
         setIsBookLoading(false);
         return;
       }
@@ -288,7 +291,7 @@ export default function Reader() {
         const fallback =
           "We couldn't load this book right now. Please try again, or pick another book.";
         setText(fallback);
-        paginateText(fallback);
+        paginateText(fallback, sourceBookId);
         return;
       }
 
@@ -328,20 +331,20 @@ export default function Reader() {
       const normalizedText = cleanText.trim();
       writeBookToCache(url, normalizedText);
       setText(normalizedText);
-      paginateText(normalizedText);
+      paginateText(normalizedText, sourceBookId);
     } catch (error) {
       console.error("Text processing error:", error);
       const fallbackText = rawText
         ? rawText.substring(0, 5000)
         : "We loaded the book, but had trouble processing it. Please try another title.";
       setText(fallbackText);
-      paginateText(fallbackText);
+      paginateText(fallbackText, sourceBookId);
     } finally {
       setIsBookLoading(false);
     }
   };
 
-  const paginateText = (fullText: string) => {
+  const paginateText = (fullText: string, sourceBookId: number | null = null) => {
     const wordsPerPage = 250;
     const allWords = fullText.split(/\s+/);
     const newPages: string[] = [];
@@ -349,105 +352,107 @@ export default function Reader() {
     for (let i = 0; i < allWords.length; i += wordsPerPage) {
       newPages.push(allWords.slice(i, i + wordsPerPage).join(' '));
     }
-    
+
     setPages(newPages);
     setCurrentPage(0);
+    visitedPagesRef.current.clear();
 
     // Update total pages in user_books
-    if (bookId && user) {
-      updateTotalPages(newPages.length);
+    const resolvedBookId = sourceBookId ?? bookId;
+    if (resolvedBookId && user) {
+      updateTotalPages(resolvedBookId, newPages.length);
     }
   };
 
-  const updateTotalPages = async (total: number) => {
-    if (!user || user.id === 'guest-user' || !bookId) return;
+  const updateTotalPages = async (targetBookId: number, total: number) => {
+    if (!user || user.id === 'guest-user') return;
     try {
       const { supabase } = await import('@/lib/supabase');
       await supabase.from('user_books')
         .update({ total_pages: total })
         .eq('user_id', user.id)
-        .eq('book_id', bookId);
+        .eq('book_id', targetBookId);
     } catch (e) {}
   };
 
-  useEffect(() => {
-    if (isReading) {
-      setStartTime(Date.now());
-      if (currentCharIndex === 0) {
-        setReReadCount(prev => prev + 1);
-      }
-    } else if (startTime) {
-      const endTime = Date.now();
-      const minutesRead = (endTime - startTime) / 60000;
-      updateProgress(minutesRead);
-      setStartTime(null);
-    }
-  }, [isReading]);
+  type ProgressUpdateOptions = {
+    score?: number;
+    isNewPage?: boolean;
+    wordsRead?: number;
+    pageNumber?: number;
+  };
 
-  const updateProgress = async (minutes: number, score?: number, isNewPage?: boolean) => {
-    if (!user || user.id === 'guest-user' || (minutes < 0.1 && score === undefined && !isNewPage)) return;
+  const countWords = (input: string) => input.split(/\s+/).filter(Boolean).length;
+
+  const updateProgress = useCallback(async (minutes: number, options: ProgressUpdateOptions = {}) => {
+    if (!user || user.id === 'guest-user') return;
+
+    const { score, isNewPage = false, wordsRead = 0, pageNumber } = options;
+    const safeMinutes = Number.isFinite(minutes) ? Math.max(0, minutes) : 0;
+    const safeWordsRead = Math.max(0, Math.round(wordsRead));
+    const hasMeaningfulUpdate =
+      safeMinutes >= MIN_PROGRESS_MINUTES || score !== undefined || isNewPage || safeWordsRead > 0;
+
+    if (!hasMeaningfulUpdate) return;
 
     try {
       const { supabase } = await import('@/lib/supabase');
-      
-      // Update general progress
+
       const { data: currentData } = await supabase
         .from('progress')
         .select('*')
         .eq('id', user.id)
         .single();
-      
+
       const today = new Date();
       const currentDayName = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][today.getDay()];
 
       if (currentData) {
-        const weeklyActivity = currentData.weekly_activity || [];
-        
-        // Update weekly activity
-        const dayIndex = weeklyActivity.findIndex((d: any) => d.day === currentDayName);
-        if (dayIndex > -1) {
-          weeklyActivity[dayIndex].value = (weeklyActivity[dayIndex].value || 0) + minutes;
-        } else {
-          weeklyActivity.push({ day: currentDayName, value: minutes });
+        const weeklyActivity = [...(currentData.weekly_activity || [])];
+
+        if (safeMinutes > 0) {
+          const dayIndex = weeklyActivity.findIndex((d: any) => d.day === currentDayName);
+          if (dayIndex > -1) {
+            weeklyActivity[dayIndex].value = (weeklyActivity[dayIndex].value || 0) + safeMinutes;
+          } else {
+            weeklyActivity.push({ day: currentDayName, value: safeMinutes });
+          }
+          if (weeklyActivity.length > 7) weeklyActivity.shift();
         }
 
-        // Keep only last 7 days
-        if (weeklyActivity.length > 7) weeklyActivity.shift();
-
-        const newScore = score !== undefined 
+        const newScore = score !== undefined
           ? ((currentData.comprehension_score || 0) + score) / (currentData.quiz_count ? currentData.quiz_count + 1 : 1)
           : currentData.comprehension_score;
 
         await supabase.from('progress').update({
-          current_minutes: (currentData.current_minutes || 0) + minutes,
-          total_words: (currentData.total_words || 0) + (isReading ? 0 : words.length),
+          current_minutes: (currentData.current_minutes || 0) + safeMinutes,
+          total_words: (currentData.total_words || 0) + safeWordsRead,
           pages_read: (currentData.pages_read || 0) + (isNewPage ? 1 : 0),
-          re_reads: (currentData.re_reads || 0) + (minutes > 0.5 ? 1 : 0),
+          re_reads: (currentData.re_reads || 0) + (safeMinutes > 0.5 ? 1 : 0),
           comprehension_score: Math.round(newScore || 0),
           quiz_count: score !== undefined ? (currentData.quiz_count || 0) + 1 : (currentData.quiz_count || 0),
           weekly_activity: weeklyActivity,
           updated_at: new Date().toISOString()
         }).eq('id', user.id);
       } else {
-        // Initialize
         await supabase.from('progress').insert({
           id: user.id,
-          current_minutes: minutes,
-          total_words: words.length,
+          current_minutes: safeMinutes,
+          total_words: safeWordsRead,
           pages_read: isNewPage ? 1 : 0,
           re_reads: 0,
           comprehension_score: score || 0,
           quiz_count: score !== undefined ? 1 : 0,
-          weekly_activity: [{ day: currentDayName, value: minutes }],
+          weekly_activity: safeMinutes > 0 ? [{ day: currentDayName, value: safeMinutes }] : [],
           updated_at: new Date().toISOString()
         });
       }
 
-      // Update book specific progress
-      if (bookId && (isNewPage || minutes > 0)) {
+      const resolvedPageNumber = pageNumber ?? currentPage + 1;
+      if (bookId && (isNewPage || safeMinutes > 0 || score !== undefined)) {
         await supabase.from('user_books')
-          .update({ 
-            pages_read: currentPage + 1,
+          .update({
+            pages_read: resolvedPageNumber,
             last_read: new Date().toISOString()
           })
           .eq('user_id', user.id)
@@ -456,7 +461,65 @@ export default function Reader() {
     } catch (error) {
       console.error("Error updating progress:", error);
     }
-  };
+  }, [bookId, currentPage, user]);
+
+  const flushReadingMinutes = useCallback(async (force = false) => {
+    if (!readingSessionStartRef.current) return;
+    const elapsedMinutes = (Date.now() - readingSessionStartRef.current) / 60000;
+    if (!force && elapsedMinutes < MIN_PROGRESS_MINUTES) return;
+    if (force && elapsedMinutes <= 0) return;
+
+    readingSessionStartRef.current = Date.now();
+    await updateProgress(elapsedMinutes, { pageNumber: currentPage + 1 });
+  }, [currentPage, updateProgress]);
+
+  useEffect(() => {
+    if (!bookId || !user || user.id === 'guest-user' || pages.length === 0 || isBookLoading) return;
+
+    const pageVisitKey = `${bookId}:${currentPage}`;
+    if (visitedPagesRef.current.has(pageVisitKey)) return;
+    visitedPagesRef.current.add(pageVisitKey);
+
+    const wordsRead = countWords(pages[currentPage] || '');
+    updateProgress(0, {
+      isNewPage: true,
+      wordsRead,
+      pageNumber: currentPage + 1
+    });
+  }, [bookId, currentPage, isBookLoading, pages, updateProgress, user]);
+
+  useEffect(() => {
+    const canTrackReadingSession =
+      Boolean(user && user.id !== 'guest-user' && pages.length > 0 && !isBookLoading && !showQuiz);
+
+    if (!canTrackReadingSession) {
+      readingSessionStartRef.current = null;
+      return;
+    }
+
+    readingSessionStartRef.current = Date.now();
+
+    const intervalId = window.setInterval(() => {
+      flushReadingMinutes();
+    }, READING_PROGRESS_SYNC_INTERVAL_MS);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushReadingMinutes(true);
+        return;
+      }
+
+      readingSessionStartRef.current = Date.now();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      flushReadingMinutes(true);
+    };
+  }, [flushReadingMinutes, isBookLoading, pages.length, showQuiz, user]);
 
   const generateQuiz = async () => {
     if (!text || text.length < 50) return;
@@ -510,7 +573,7 @@ export default function Reader() {
     } else {
       setQuizFinished(true);
       const finalScorePercent = Math.round((quizScore / quizQuestions.length) * 100);
-      updateProgress(0, finalScorePercent);
+      updateProgress(0, { score: finalScorePercent });
       
       // Award XP for quiz completion
       if (finalScorePercent >= 50) {
@@ -768,29 +831,67 @@ export default function Reader() {
 
     const recognition = new SpeechRecognitionCtor();
     recognition.lang = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'sw-KE';
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    
+    let finalTranscript = '';
+    
+    recognition.onstart = () => {
+      setIsListening(true);
+      setLastVoiceCommand(null);
+    };
     
     recognition.onresult = (event: any) => {
-      const command = event.results[0][0].transcript.toLowerCase();
-      console.log("Voice command:", command);
-
-      if (command.includes('read') || command.includes('play') || command.includes('start')) {
-        handlePlayPause();
-      } else if (command.includes('stop') || command.includes('pause')) {
-        stopTts();
-      } else if (command.includes('simplify')) {
-        handleSimplify();
-      } else if (command.includes('summarize') || command.includes('explain')) {
-        handleSummarize();
-      } else if (command.includes('next')) {
-        handleNextPage();
-      } else if (command.includes('back')) {
-        handlePrevPage();
+      const result = event.results[event.resultIndex];
+      const transcript = result[0].transcript;
+      
+      // Update displayed transcript on any result
+      setLastVoiceCommand(transcript);
+      
+      // If this is a final result, store it
+      if (result.isFinal) {
+        finalTranscript = transcript;
       }
+    };
+    
+    recognition.onend = () => {
+      setIsListening(false);
+      // Execute command with final transcript or last interim
+      const command = finalTranscript || lastVoiceCommand;
+      if (command) {
+        setTimeout(() => {
+          executeVoiceCommand(command.toLowerCase());
+          setLastVoiceCommand(null);
+        }, 500);
+      } else {
+        setLastVoiceCommand(null);
+      }
+    };
+    
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+      setLastVoiceCommand(null);
     };
 
     recognition.start();
+  };
+
+  const executeVoiceCommand = (command: string) => {
+    console.log("Voice command:", command);
+    if (command.includes('read') || command.includes('play') || command.includes('start')) {
+      handlePlayPause();
+    } else if (command.includes('stop') || command.includes('pause')) {
+      stopTts();
+    } else if (command.includes('simplify')) {
+      handleSimplify();
+    } else if (command.includes('summarize') || command.includes('explain')) {
+      handleSummarize();
+    } else if (command.includes('next')) {
+      handleNextPage();
+    } else if (command.includes('back')) {
+      handlePrevPage();
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
@@ -861,7 +962,6 @@ export default function Reader() {
     if (currentPage < pages.length - 1) {
       setCurrentPage(prev => prev + 1);
       setPagesReadInSession(prev => prev + 1);
-      updateProgress(0, undefined, true);
       addXP(rewards.READ_MINUTE / 2, "Page read", [{ id: '1', increment: 1 }]);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1024,7 +1124,7 @@ export default function Reader() {
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-3 relative">
                   <button 
                     onClick={handleSimplify}
                     disabled={isSimplifying}
@@ -1043,13 +1143,20 @@ export default function Reader() {
                   </button>
                   <button 
                     onClick={handleVoiceCommand}
-                    className={`flex-1 px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${
+                    className={`flex-1 px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all relative ${
                       isListening ? 'bg-error text-white animate-pulse' : 'bg-primary/10 text-primary hover:bg-surface-container-high'
                     }`}
                   >
                     <Mic className="w-4 h-4" />
                     {isListening ? 'Listening...' : 'Assistant'}
                   </button>
+                  
+                  {/* Voice command tooltip displayed above all buttons */}
+                  {lastVoiceCommand && !isListening && (
+                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-primary text-white px-4 py-2 rounded-xl text-sm shadow-lg z-20 whitespace-nowrap">
+                      Heard: "{lastVoiceCommand}"
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-4">
