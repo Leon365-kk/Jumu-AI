@@ -88,6 +88,7 @@ export default function Reader() {
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const isSpeechCancelledRef = useRef(false);
+  const flushReadingMinutesRef = useRef<((force?: boolean) => void)>(() => {});
   const activeText = pages.length > 0 ? pages[currentPage] : text;
   const words = useMemo(() => {
     if (!activeText) return [];
@@ -473,6 +474,9 @@ export default function Reader() {
     await updateProgress(elapsedMinutes, { pageNumber: currentPage + 1 });
   }, [currentPage, updateProgress]);
 
+  // Keep ref up-to-date for stable interval callbacks
+  flushReadingMinutesRef.current = flushReadingMinutes;
+
   useEffect(() => {
     if (!bookId || !user || user.id === 'guest-user' || pages.length === 0 || isBookLoading) return;
 
@@ -493,23 +497,30 @@ export default function Reader() {
       Boolean(user && user.id !== 'guest-user' && pages.length > 0 && !isBookLoading && !showQuiz);
 
     if (!canTrackReadingSession) {
-      readingSessionStartRef.current = null;
+      // End session if we were tracking
+      if (readingSessionStartRef.current) {
+        flushReadingMinutesRef.current(true);
+        readingSessionStartRef.current = null;
+      }
       return;
     }
 
-    readingSessionStartRef.current = Date.now();
+    // Start a new session if not already started
+    if (!readingSessionStartRef.current) {
+      readingSessionStartRef.current = Date.now();
+    }
 
     const intervalId = window.setInterval(() => {
-      flushReadingMinutes();
+      flushReadingMinutesRef.current();
     }, READING_PROGRESS_SYNC_INTERVAL_MS);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        flushReadingMinutes(true);
-        return;
+        flushReadingMinutesRef.current(true);
+      } else {
+        // Resume session
+        readingSessionStartRef.current = Date.now();
       }
-
-      readingSessionStartRef.current = Date.now();
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -517,9 +528,12 @@ export default function Reader() {
     return () => {
       window.clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      flushReadingMinutes(true);
+      // Flush any remaining time before cleanup
+      if (readingSessionStartRef.current) {
+        flushReadingMinutesRef.current(true);
+      }
     };
-  }, [flushReadingMinutes, isBookLoading, pages.length, showQuiz, user]);
+  }, [bookId, user, pages.length, isBookLoading, showQuiz]); // Removed flushReadingMinutes from deps to prevent reset on page turn
 
   const generateQuiz = async () => {
     if (!text || text.length < 50) return;
