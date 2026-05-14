@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lexend:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --primary: #0058be;
+    --primary-container: #2170e4;
+    --surface: #fbf9f5;
+    --surface-container-low: #f5f3ef;
+    --surface-container-high: #eae8e4;
+    --surface-container-highest: #e4e2de;
+    --on-surface: #1b1c1a;
+    --on-surface-variant: #424754;
+    --tertiary: #924700;
+  }
+
+  [data-theme='dark'] {
+    --primary: #a8c7ff;
+    --primary-container: #004494;
+    --surface: #111318;
+    --surface-container-low: #1a1c22;
+    --surface-container-high: #24262d;
+    --surface-container-highest: #2e3038;
+    --on-surface: #e2e2e9;
+    --on-surface-variant: #c4c6d0;
+    --tertiary: #ffb77c;
+  }
+
+  [data-theme='blue'] {
+    --primary: #0061a4;
+    --primary-container: #d1e4ff;
+    --surface: #f8f9ff;
+    --surface-container-low: #f0f4ff;
+    --surface-container-high: #e1e9ff;
+    --surface-container-highest: #d2deff;
+    --on-surface: #001d36;
+    --on-surface-variant: #43474e;
+    --tertiary: #535f70;
+  }
+
+  [data-theme='green'] {
+    --primary: #006d3b;
+    --primary-container: #99f6b4;
+    --surface: #f7fbf1;
+    --surface-container-low: #eff5e7;
+    --surface-container-high: #e3ebd9;
+    --surface-container-highest: #d7e1cc;
+    --on-surface: #00210e;
+    --on-surface-variant: #414941;
+    --tertiary: #506353;
+  }
+
+  body {
+    @apply bg-surface text-on-surface font-sans antialiased transition-colors duration-300 overflow-x-hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Hide scrollbars for a cleaner app look */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  /* Allow scrolling on main content specifically if needed */
+  main {
+    touch-action: pan-y;
+  }
+}
+
+@theme {
+  --color-primary: var(--primary);
+  --color-primary-container: var(--primary-container);
+  --color-surface: var(--surface);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-tertiary: var(--tertiary);
+  
+  --font-headline: "Lexend", sans-serif;
+  --font-sans: "Inter", sans-serif;
+  
+  --radius-xl: 3rem;
+  --radius-lg: 2rem;
+}
+
+.glass-nav {
+  @apply bg-surface/80 backdrop-blur-2xl;
+}
+
+.ocr-bound {
+  background: rgba(0, 88, 190, 0.15);
+  border: 2px solid rgba(0, 88, 190, 0.6);
+  box-shadow: 0 0 15px rgba(0, 88, 190, 0.3);
+}
+
+.reading-highlight {
+  @apply bg-blue-500 text-white rounded-sm px-1;
+}

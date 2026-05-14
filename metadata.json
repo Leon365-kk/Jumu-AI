@@ -1,0 +1,5 @@
+{
+  "name": "Jumu Ai",
+  "description": "A cognitive sanctuary for neurodiverse learners, featuring smart reading, OCR, and personalized focus tools.",
+  "requestFramePermissions": ["camera", "microphone"]
+}
