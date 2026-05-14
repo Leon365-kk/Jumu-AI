@@ -1,11 +1,12 @@
 import { motion, AnimatePresence } from 'motion/react';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Sparkles, Wand2, FileText, Type, AlignLeft, AlignCenter, AlignRight, Plus, Minus, Play, Pause, Upload, Clipboard, Volume2, Info, Brain, CheckCircle2, XCircle, Loader2, ChevronLeft, ChevronRight, BookOpen, Library, Mic, Eye, EyeOff, BookMarked } from 'lucide-react';
 import { useApp } from '@/lib/AppContext';
 import { supabase } from '@/lib/supabase';
 import { generateAIContent } from '@/services/aiService';
+import { extractTextFromUpload } from '@/services/ocrService';
 import { rewards } from '@/lib/gamification';
 
 interface QuizQuestion {
@@ -14,6 +15,16 @@ interface QuizQuestion {
   correctAnswer: number;
   explanation: string;
 }
+
+const BOOK_CACHE_PREFIX = 'jumu:book:text:v1';
+const BOOK_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const MIN_MEANINGFUL_TEXT_LENGTH = 500;
+const BOOK_FETCH_TIMEOUT_MS = 10000;
+
+type CachedBookPayload = {
+  text: string;
+  cachedAt: number;
+};
 
 export default function Reader() {
   const { language, userName, user, addXP } = useApp();
@@ -67,41 +78,153 @@ export default function Reader() {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [isTtsLoading, setIsTtsLoading] = useState(false);
+  const [voiceMode, setVoiceMode] = useState<'streaming' | 'gemini'>('streaming');
+  const [isUploadProcessing, setIsUploadProcessing] = useState(false);
 
   const [isControlsExpanded, setIsControlsExpanded] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const words = pages.length > 0 ? pages[currentPage].split(/\s+/) : text.split(/\s+/);
+  const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const isSpeechCancelledRef = useRef(false);
+  const activeText = pages.length > 0 ? pages[currentPage] : text;
+  const words = useMemo(() => {
+    if (!activeText) return [];
+    return activeText.split(/\s+/).filter(Boolean);
+  }, [activeText]);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastLoadedBookUrlRef = useRef<string | null>(null);
+
+  const getBookCacheKey = (url: string) => `${BOOK_CACHE_PREFIX}:${url}`;
+
+  const readBookFromCache = (url: string): string | null => {
+    try {
+      const cached = localStorage.getItem(getBookCacheKey(url));
+      if (!cached) return null;
+      const parsed = JSON.parse(cached) as CachedBookPayload;
+      if (!parsed?.text || !parsed?.cachedAt) return null;
+      if (Date.now() - parsed.cachedAt > BOOK_CACHE_TTL_MS) {
+        localStorage.removeItem(getBookCacheKey(url));
+        return null;
+      }
+      return parsed.text;
+    } catch {
+      return null;
+    }
+  };
+
+  const writeBookToCache = (url: string, cleanText: string) => {
+    try {
+      const payload: CachedBookPayload = { text: cleanText, cachedAt: Date.now() };
+      localStorage.setItem(getBookCacheKey(url), JSON.stringify(payload));
+    } catch {
+      // Ignore cache failures (storage full/private mode).
+    }
+  };
+
+  const fetchTextWithTimeout = async (sourceUrl: string) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), BOOK_FETCH_TIMEOUT_MS);
+    try {
+      const response = await fetch(sourceUrl, { signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      const responseText = await response.text();
+      if (!responseText || responseText.length < MIN_MEANINGFUL_TEXT_LENGTH) {
+        throw new Error('Response text too short');
+      }
+      return responseText;
+    } finally {
+      clearTimeout(timeout);
+    }
+  };
+
+  const getSpeechLanguage = () => {
+    if (language === 'es') return 'es-ES';
+    if (language === 'sw') return 'sw-KE';
+    return 'en-US';
+  };
+
+  const splitIntoSpeechChunks = (input: string, maxChars = 220) => {
+    const normalized = input.replace(/\s+/g, ' ').trim();
+    if (!normalized) return [];
+
+    const sentenceParts = normalized.match(/[^.!?]+[.!?]*/g) || [normalized];
+    const chunks: string[] = [];
+    let current = '';
+
+    for (const sentence of sentenceParts) {
+      const candidate = current ? `${current} ${sentence}` : sentence;
+      if (candidate.length <= maxChars) {
+        current = candidate;
+        continue;
+      }
+
+      if (current) chunks.push(current.trim());
+
+      if (sentence.length <= maxChars) {
+        current = sentence;
+      } else {
+        const wordsInSentence = sentence.split(' ');
+        let overflowChunk = '';
+        for (const word of wordsInSentence) {
+          const overflowCandidate = overflowChunk ? `${overflowChunk} ${word}` : word;
+          if (overflowCandidate.length <= maxChars) {
+            overflowChunk = overflowCandidate;
+          } else {
+            if (overflowChunk) chunks.push(overflowChunk.trim());
+            overflowChunk = word;
+          }
+        }
+        current = overflowChunk;
+      }
+    }
+
+    if (current) chunks.push(current.trim());
+    return chunks.filter(Boolean);
+  };
 
   useEffect(() => {
-    // Handle book passed from library or writer
+    // Handle book passed from library or writer.
     const state = location.state as { bookTitle?: string; bookUrl?: string; bookId?: number; bookCover?: string; textContent?: string };
-    
+
     if (state?.textContent) {
       setBookTitle(state.bookTitle || 'My New Story');
       setText(state.textContent);
       paginateText(state.textContent);
-    } else if (state?.bookUrl) {
+      setIsBookLoading(false);
+      return;
+    }
+
+    if (state?.bookUrl) {
       setBookTitle(state.bookTitle || 'Unknown Book');
       setBookId(state.bookId || null);
       setBookCover(state.bookCover || null);
       setBookUrl(state.bookUrl);
-      setIsBookLoading(true);
-      fetchBookContent(state.bookUrl);
-      
-      // Upsert into user_books if we have a bookId
-      if (state.bookId && user) {
-        upsertUserBook(state.bookId, state.bookTitle || 'Unknown Book', state.bookCover || null, state.bookUrl);
+      setSummary(null);
+      setShowQuiz(false);
+      setQuizQuestions([]);
+
+      if (lastLoadedBookUrlRef.current !== state.bookUrl) {
+        lastLoadedBookUrlRef.current = state.bookUrl;
+        fetchBookContent(state.bookUrl);
       }
     }
+  }, [location]);
 
-    if (!state?.bookUrl && user) {
+  useEffect(() => {
+    if (!bookUrl && user) {
       fetchRecentBooks();
     }
-  }, [location, user]);
+  }, [bookUrl, user]);
+
+  useEffect(() => {
+    if (!user || user.id === 'guest-user') return;
+    if (!bookId || !bookUrl || !bookTitle) return;
+    upsertUserBook(bookId, bookTitle, bookCover, bookUrl);
+  }, [bookId, bookTitle, bookCover, bookUrl, user]);
 
   const upsertUserBook = async (id: number, title: string, cover: string | null, url: string) => {
     if (!user || user.id === 'guest-user') return;
@@ -139,39 +262,36 @@ export default function Reader() {
 
   const fetchBookContent = async (url: string) => {
     setIsBookLoading(true);
-    const proxies = [
-      (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-      (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-      (u: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-    ];
-
     let rawText = "";
-    let success = false;
-
-    for (const getProxyUrl of proxies) {
-      try {
-        const proxyUrl = getProxyUrl(url);
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        rawText = await response.text();
-        if (rawText && rawText.length > 500) { // Basic check for meaningful content
-          success = true;
-          break;
-        }
-      } catch (err) {
-        console.warn(`Proxy failed:`, err);
-        continue;
-      }
-    }
-
-    if (!success) {
-      console.error("All proxies failed for URL:", url);
-      setText("We couldn't load this book's content directly. You can try searching for another one or pasting the text here!");
-      setIsGeneratingQuiz(false);
-      return;
-    }
-
     try {
+      const cachedText = readBookFromCache(url);
+      if (cachedText) {
+        setText(cachedText);
+        paginateText(cachedText);
+        setIsBookLoading(false);
+        return;
+      }
+
+      const proxyFactories = [
+        (u: string) => u,
+        (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+        (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+        (u: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+      ];
+
+      try {
+        rawText = await Promise.any(
+          proxyFactories.map((getProxyUrl) => fetchTextWithTimeout(getProxyUrl(url)))
+        );
+      } catch (error) {
+        console.error("All text sources failed for URL:", url, error);
+        const fallback =
+          "We couldn't load this book right now. Please try again, or pick another book.";
+        setText(fallback);
+        paginateText(fallback);
+        return;
+      }
+
       // Clean up Gutenberg metadata (start/end markers)
       // More robust splitting for different Gutenberg variations
       let cleanText = rawText;
@@ -204,15 +324,20 @@ export default function Reader() {
           break;
         }
       }
-        
-      setText(cleanText.trim());
-      paginateText(cleanText.trim());
+
+      const normalizedText = cleanText.trim();
+      writeBookToCache(url, normalizedText);
+      setText(normalizedText);
+      paginateText(normalizedText);
     } catch (error) {
       console.error("Text processing error:", error);
-      setText(rawText.substring(0, 5000)); // Fallback to raw text if cleaning fails
-      paginateText(rawText.substring(0, 5000));
+      const fallbackText = rawText
+        ? rawText.substring(0, 5000)
+        : "We loaded the book, but had trouble processing it. Please try another title.";
+      setText(fallbackText);
+      paginateText(fallbackText);
     } finally {
-      setIsGeneratingQuiz(false);
+      setIsBookLoading(false);
     }
   };
 
@@ -403,6 +528,13 @@ export default function Reader() {
   }, []);
 
   const stopTts = () => {
+    isSpeechCancelledRef.current = true;
+
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      speechUtteranceRef.current = null;
+    }
+
     if (audioSourceRef.current) {
       try {
         audioSourceRef.current.stop();
@@ -410,10 +542,60 @@ export default function Reader() {
       audioSourceRef.current = null;
     }
     setIsReading(false);
+    setCurrentWordIndex(-1);
+  };
+
+  const playStreamingTts = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      return false;
+    }
+
+    const speakText = activeText.trim();
+    if (!speakText) return false;
+
+    const chunks = splitIntoSpeechChunks(speakText);
+    if (!chunks.length) return false;
+
+    const synth = window.speechSynthesis;
+    isSpeechCancelledRef.current = false;
+    synth.cancel();
+
+    setIsReading(true);
+    setCurrentWordIndex(0);
+
+    const speakNextChunk = (index: number) => {
+      if (index >= chunks.length) {
+        setIsReading(false);
+        setCurrentWordIndex(-1);
+        speechUtteranceRef.current = null;
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(chunks[index]);
+      utterance.lang = getSpeechLanguage();
+      utterance.rate = Math.min(2, Math.max(0.6, speed));
+      utterance.pitch = Math.min(2, Math.max(0.5, pitch));
+
+      utterance.onend = () => {
+        if (isSpeechCancelledRef.current) return;
+        speakNextChunk(index + 1);
+      };
+
+      utterance.onerror = () => {
+        setIsReading(false);
+        setCurrentWordIndex(-1);
+      };
+
+      speechUtteranceRef.current = utterance;
+      synth.speak(utterance);
+    };
+
+    speakNextChunk(0);
+    return true;
   };
 
   const playGeminiTts = async () => {
-    if (!text || isTtsLoading) return;
+    if (!activeText || isTtsLoading) return;
     if (isReading) {
       stopTts();
       return;
@@ -431,7 +613,7 @@ export default function Reader() {
 
       const response = await generateAIContent({
         model: "gemini-3.1-flash-tts-preview",
-        contents: [{ parts: [{ text: text.substring(0, 3000) }] }], // Limit length for stability
+        contents: [{ parts: [{ text: activeText.substring(0, 3000) }] }], // Keep latency low
         config: {
           responseModalities: ["AUDIO"],
           speechConfig: {
@@ -494,51 +676,49 @@ export default function Reader() {
     }
   };
 
-  const handlePlayPause = () => {
-    playGeminiTts();
+  const handlePlayPause = async () => {
+    if (isReading) {
+      stopTts();
+      return;
+    }
+
+    if (voiceMode === 'streaming') {
+      const started = playStreamingTts();
+      if (started) return;
+    }
+
+    await playGeminiTts();
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsGeneratingQuiz(true);
+    setIsUploadProcessing(true);
+    setIsBookLoading(true);
     setBookTitle(file.name.replace(/\.[^/.]+$/, ""));
     
     try {
-      const fileData = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-        reader.readAsDataURL(file);
-      });
-      
-      const result = await generateAIContent({
-        model: "gemini-1.5-flash",
-        contents: [{
-          parts: [
-            {
-              inlineData: {
-                data: fileData,
-                mimeType: file.type
-              }
-            },
-            { text: `Extract all visible text from this document accurately. Maintain the reading order and structure. If there are multiple columns, read left to right, top to bottom. Respond only with the extracted text in ${language}.` }
-          ]
-        }]
-      });
-      
-      const extractedText = result.text || '';
-      if (extractedText) {
-        setText(extractedText);
-        paginateText(extractedText);
+      const { text: extractedText, provider } = await extractTextFromUpload(file, language);
+      const normalizedText = extractedText.trim();
+
+      if (normalizedText) {
+        setSummary(null);
+        setShowQuiz(false);
+        setQuizQuestions([]);
+        setText(normalizedText);
+        paginateText(normalizedText);
+        console.info(`Upload text extracted via: ${provider}`);
       } else {
         throw new Error("No text could be extracted from this file.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("File processing error:", error);
-      alert("We had trouble reading that file. Please try a clearer photo or a different file type.");
+      alert(error?.message || "We had trouble reading that file. Please try a clearer photo or a different file type.");
     } finally {
-      setIsGeneratingQuiz(false);
+      setIsUploadProcessing(false);
+      setIsBookLoading(false);
+      e.target.value = '';
     }
   };
 
@@ -578,13 +758,16 @@ export default function Reader() {
     }
   };
   const handleVoiceCommand = () => {
-    if (!('webkitSpeechRecognition' in window)) {
+    const SpeechRecognitionCtor =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
       alert("Speech recognition is not supported in this browser.");
       return;
     }
 
-    const recognition = new (window as any).webkitSpeechRecognition();
-    recognition.lang = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'fr-FR';
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'sw-KE';
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
     
@@ -593,12 +776,9 @@ export default function Reader() {
       console.log("Voice command:", command);
 
       if (command.includes('read') || command.includes('play') || command.includes('start')) {
-        playGeminiTts();
+        handlePlayPause();
       } else if (command.includes('stop') || command.includes('pause')) {
-        if (audioSourceRef.current) {
-          audioSourceRef.current.stop();
-          setIsReading(false);
-        }
+        stopTts();
       } else if (command.includes('simplify')) {
         handleSimplify();
       } else if (command.includes('summarize') || command.includes('explain')) {
@@ -745,9 +925,9 @@ export default function Reader() {
                   Paste from Clipboard
                 </button>
                 <label className="flex items-center justify-center gap-2 bg-surface-container-low text-primary px-8 py-4 rounded-xl font-bold hover:bg-surface-container-high active:scale-95 transition-all cursor-pointer">
-                  <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileUpload} />
-                  <Upload className="w-5 h-5" />
-                  Upload File
+                  <input type="file" accept="image/*,.pdf,.txt,.md,.csv,.json,.xml" className="hidden" onChange={handleFileUpload} />
+                  {isUploadProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                  {isUploadProcessing ? 'Extracting Text...' : 'Upload File'}
                 </label>
               </div>
             </motion.div>
@@ -771,7 +951,6 @@ export default function Reader() {
                         setBookUrl(book.book_url);
                         setIsBookLoading(true);
                         fetchBookContent(book.book_url);
-                        upsertUserBook(book.book_id, book.title, book.cover_url, book.book_url);
                       }}
                     >
                       <div className="w-16 h-20 bg-surface-container-low rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
@@ -818,7 +997,7 @@ export default function Reader() {
                 </div>
                 <div className="pt-12 text-center">
                   <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
-                  <p className="text-sm font-bold text-stone-400 uppercase tracking-widest">Preparing your summary & quiz...</p>
+                  <p className="text-sm font-bold text-stone-400 uppercase tracking-widest">Loading your book...</p>
                 </div>
               </div>
             ) : (
@@ -1247,14 +1426,16 @@ export default function Reader() {
                     <div className="flex items-center gap-4">
                       <button 
                         onClick={handlePlayPause}
-                        disabled={isTtsLoading}
+                        disabled={voiceMode === 'gemini' && isTtsLoading}
                         className="w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all disabled:opacity-50"
                       >
                         {isTtsLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : isReading ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />}
                       </button>
                       <div>
                         <div className="font-bold text-on-surface leading-tight">Reading Aloud</div>
-                        <div className="text-[10px] text-on-surface-variant uppercase tracking-widest font-black">Natural Voice</div>
+                        <div className="text-[10px] text-on-surface-variant uppercase tracking-widest font-black">
+                          {voiceMode === 'streaming' ? 'Streaming Voice' : 'Natural Voice'}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -1356,6 +1537,28 @@ export default function Reader() {
 
                     <div className="space-y-2 col-span-2 md:col-span-1">
                       <label className="text-[10px] uppercase tracking-widest font-bold text-stone-500">Voice</label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setVoiceMode('streaming')}
+                          className={`flex-1 h-10 rounded-xl text-[10px] font-bold border transition-all ${
+                            voiceMode === 'streaming'
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white text-stone-500 border-surface-container-highest'
+                          }`}
+                        >
+                          Stream
+                        </button>
+                        <button
+                          onClick={() => setVoiceMode('gemini')}
+                          className={`flex-1 h-10 rounded-xl text-[10px] font-bold border transition-all ${
+                            voiceMode === 'gemini'
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-white text-stone-500 border-surface-container-highest'
+                          }`}
+                        >
+                          Gemini
+                        </button>
+                      </div>
                       <button className="w-full flex items-center justify-between bg-surface-container-low px-4 h-10 rounded-xl text-[10px] font-bold">
                         <span className="capitalize">{language === 'en' ? 'English' : language === 'sw' ? 'Swahili' : 'Spanish'}</span>
                         <Volume2 className="w-4 h-4 text-primary" />

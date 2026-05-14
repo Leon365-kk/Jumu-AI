@@ -28,3 +28,8 @@ Add these environment variables in **Project Settings > Environment Variables** 
 - `GEMINI_API_KEY` (if you are using `/api/gemini` on the deployed server)
 
 If `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` is missing, the app will now show a configuration warning screen instead of a blank page.
+
+## Reader Upload + Voice
+
+- Upload OCR now uses fully open-source local processing with `tesseract.js` + `pdfjs-dist`.
+- Reader voice now supports a low-latency **Streaming** mode in addition to Gemini voice.
