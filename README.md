@@ -18,3 +18,13 @@ View your app in AI Studio: https://ai.studio/apps/a890665c-e5b4-4bf6-8e47-a57e7
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Deploying to Vercel
+
+Add these environment variables in **Project Settings > Environment Variables** for **Production**, then redeploy:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `GEMINI_API_KEY` (if you are using `/api/gemini` on the deployed server)
+
+If `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` is missing, the app will now show a configuration warning screen instead of a blank page.

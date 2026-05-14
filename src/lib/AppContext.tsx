@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Language, translations } from './translations';
-import { supabase } from './supabase';
+import { isSupabaseConfigured, missingSupabaseConfigMessage, supabase } from './supabase';
 import { User } from '@supabase/supabase-js';
 
 interface AppContextType {
@@ -49,6 +49,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [badgeNotification, setBadgeNotification] = useState<{ title: string; description: string } | null>(null);
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      console.warn(missingSupabaseConfigMessage);
+      setLoading(false);
+      return;
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);

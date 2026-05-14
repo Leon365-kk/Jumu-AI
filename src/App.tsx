@@ -17,6 +17,7 @@ import OnboardingName from './pages/OnboardingName';
 
 import { useApp } from './lib/AppContext';
 import { Loader2 } from 'lucide-react';
+import { isSupabaseConfigured, missingSupabaseConfigMessage } from './lib/supabase';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -55,6 +56,21 @@ function AnimatedRoutes() {
 }
 
 export default function App() {
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="min-h-screen w-full bg-surface text-text flex items-center justify-center p-6">
+        <div className="max-w-xl rounded-2xl border border-border bg-card p-6 space-y-3">
+          <h1 className="text-2xl font-bold">Configuration Required</h1>
+          <p className="opacity-90">{missingSupabaseConfigMessage}</p>
+          <p className="text-sm opacity-80">
+            For Vercel, add both env vars in Project Settings {'>'} Environment Variables for
+            Production and redeploy.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Router>
       <AnimatedRoutes />
