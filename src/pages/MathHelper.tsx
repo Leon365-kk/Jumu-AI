@@ -55,7 +55,7 @@ export default function MathHelper() {
 
         try {
           const result = await generateAIContent({
-            model: "gemini-1.5-flash", 
+            model: "meta/llama-3.2-90b-vision-instruct", // NVIDIA NIM vision model for math
             contents: [
               {
                 parts: [

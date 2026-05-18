@@ -27,7 +27,7 @@ export default function CameraView() {
         const base64Data = (reader.result as string).split(',')[1];
         
         const result = await generateAIContent({
-          model: "gemini-1.5-flash", // Using flash for OCR as it's better at multimodal
+          model: "meta/llama-3.2-90b-vision-instruct", // NVIDIA NIM vision model for OCR
           contents: [{
             parts: [
               {

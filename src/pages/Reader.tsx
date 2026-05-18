@@ -689,7 +689,7 @@ export default function Reader() {
       const voiceName = voiceMap[language as keyof typeof voiceMap] || 'Kore';
 
       const response = await generateAIContent({
-        model: "gemini-3.1-flash-tts-preview",
+        model: "meta/llama-3.1-8b-instruct", // NVIDIA NIM text model (TTS audio not returned by NIM)
         contents: [{ parts: [{ text: activeText.substring(0, 3000) }] }], // Keep latency low
         config: {
           responseModalities: ["AUDIO"],
