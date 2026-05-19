@@ -72,13 +72,15 @@ function attachImagesToMessages(textMessages: any[], imagePayloads: any[]): any[
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
   if (!NVIDIA_KEY) {
-    console.error("ERROR: NVIDIA_API_KEY is not set in .env.local");
+    console.error("ERROR: NVIDIA_API_KEY is not set");
   }
 
   app.use(express.json({ limit: "10mb" }));
+  app.use(express.text({ type: "text/plain", limit: "10mb" }));
+  app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
   // API Proxy: translating the app's Gemini-style payload to NVIDIA NIM format
   app.post("/api/gemini", async (req, res) => {
