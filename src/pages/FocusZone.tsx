@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/lib/AppContext';
 import { TapEffect } from '@/components/TapEffect';
+import SEO from '@/lib/SEO';
 
 interface Sound {
   id: string;
@@ -91,6 +92,12 @@ export default function FocusZone() {
 
   return (
     <Layout>
+      <SEO
+        title="Focus Zone — Jumu AI"
+        description="Enter the Focus Zone — a sensory-friendly environment with ambient white noise, pink noise, and rain sounds to help neurodiverse learners find their calm."
+        canonical="https://jumu.ai/focus-zone"
+        ogType="website"
+      />
       <div className="max-w-6xl mx-auto px-6 pb-32">
         <motion.section 
           initial={{ opacity: 0, y: 20 }}

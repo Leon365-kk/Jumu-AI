@@ -5,6 +5,7 @@ import { Layout } from '@/components/Layout';
 import { Book, Loader2, Search, ChevronRight, Library, BookOpen, Sparkles, BarChart3, ArrowRight } from 'lucide-react';
 import { useApp } from '@/lib/AppContext';
 import { cn } from '@/lib/utils';
+import SEO from '@/lib/SEO';
 import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Link } from 'react-router-dom';
@@ -130,6 +131,12 @@ export default function Writer() {
 
   return (
     <Layout>
+      <SEO
+        title="Free Books Library — Jumu AI"
+        description="Browse thousands of free classic books from Project Gutenberg in the Jumu AI Library. Accessible reading with text-to-speech for all ages and abilities."
+        canonical="https://jumu.ai/library"
+        ogType="website"
+      />
       <div className="max-w-6xl mx-auto px-6 pb-32">
         <motion.section 
           initial={{ opacity: 0, y: 20 }}

@@ -3,6 +3,7 @@ import { Layout } from '@/components/Layout';
 import { Flame, BookOpen, Languages, Star, Sparkles, Trophy, ArrowRight, Book, Edit3, Sprout, BarChart3, BookMarked, Zap, Calculator, Library } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useApp } from '@/lib/AppContext';
+import SEO from '@/lib/SEO';
 import { TapEffect } from '@/components/TapEffect';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -88,6 +89,12 @@ export default function Dashboard() {
 
   return (
     <Layout>
+      <SEO
+        title="Dashboard — Jumu AI"
+        description="Your personalized Jumu AI dashboard. Track daily progress, view reading challenges, earn badges, and focus insights — all in one place."
+        canonical="https://jumu.ai/dashboard"
+        ogType="website"
+      />
       <div className="max-w-7xl mx-auto px-6 pb-24">
         {/* Learning Focus Selection */}
         <section className="mb-12 bg-white rounded-[40px] p-8 border-2 border-surface-container-highest shadow-sm">

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:news="http://www.google.com/schemas/sitemap-news/1.1">
+  <url>
+    <loc>https://jumu.ai/</loc>
+    <lastmod>2025-05-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1510070112810-d4e9a46d9e91?auto=format&amp;fit=crop&amp;q=80&amp;w=1200</image:loc>
+      <image:title>Creative Lego Learning</image:title>
+    </image:image>
+  </url>
+
+  <!-- App Routes -->
+  <url><loc>https://jumu.ai/login</loc><lastmod>2025-05-21</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://jumu.ai/onboarding/name</loc><lastmod>2025-05-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jumu.ai/onboarding/personalize</loc><lastmod>2025-05-21</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jumu.ai/dashboard</loc><lastmod>2025-05-21</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://jumu.ai/reader</loc><lastmod>2025-05-21</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jumu.ai/library</loc><lastmod>2025-05-21</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jumu.ai/writer</loc><lastmod>2025-05-21</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jumu.ai/math</loc><lastmod>2025-05-21</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jumu.ai/focus-zone</loc><lastmod>2025-05-21</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://jumu.ai/camera</loc><lastmod>2025-05-21</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://jumu.ai/progress</loc><lastmod>2025-05-21</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://jumu.ai/glossary</loc><lastmod>2025-05-21</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://jumu.ai/settings</loc><lastmod>2025-05-21</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+</urlset>

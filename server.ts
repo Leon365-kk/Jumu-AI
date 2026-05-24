@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
@@ -78,7 +79,55 @@ async function startServer() {
     console.error("ERROR: NVIDIA_API_KEY is not set");
   }
 
+  // CORS — allow requests from Vercel frontend and local dev
+  const allowedOrigins = [
+    process.env.VITE_RENDER_URL?.replace(/\/$/, '') || 'https://jumu-ai.onrender.com',
+    /https:\/\/.*\.vercel\.app$/,
+    "https://jumuai.stemlensnetwork.com",
+    "http://localhost:5173",
+  ];
+  app.use(cors({ origin: allowedOrigins, credentials: true }));
+  app.options('*', cors({ origin: allowedOrigins, credentials: true }));
+
   app.use(express.json({ limit: "10mb" }));
+
+  // SEO & Security headers
+  app.use((_req, res, next) => {
+    // Prevent MIME sniffing
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    // Prevent clickjacking
+    res.setHeader("X-Frame-Options", "DENY");
+    // Control referrer information
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    // Prevent memory-unsafe inline execution (CSP)
+    res.setHeader(
+      "Content-Security-Policy",
+      [
+        "default-src 'self'",
+        // Unsplash images need explicit source
+        "img-src 'self' data: https://images.unsplash.com https://picsum.photos",
+        // Google Fonts, Unsplash fonts
+        "font-src 'self' https://fonts.gstatic.com",
+        // Stylesheets: app CSS + inline styles used by React/motion
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        // Vite/HMR dev-server, Gemini AI proxy
+        "connect-src 'self' https://integrate.api.nvidia.com https://*.supabase.co wss://*.supabase.co https://api.openai.com https://generativelanguage.googleapis.com",
+        // Service worker scope
+        "worker-src 'self'",
+        // YouTube embeds etc.
+        "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+      ].join("; "),
+    );
+    // Cross-origin opener/embedder policies
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+    res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+    // Permissions policy (clipboard, microphone only when needed)
+    res.setHeader(
+      "Permissions-Policy",
+      "clipboard-write=(self), microphone=(self), camera=(self)",
+    );
+    next();
+  });
   app.use(express.text({ type: "text/plain", limit: "10mb" }));
   app.use(express.urlencoded({ limit: "10mb", extended: true }));
 

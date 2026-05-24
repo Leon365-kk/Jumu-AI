@@ -5,6 +5,7 @@ import { Layout } from '@/components/Layout';
 import { Sparkles, Wand2, FileText, Type, AlignLeft, AlignCenter, AlignRight, Plus, Minus, Play, Pause, Upload, Clipboard, Volume2, Info, Brain, CheckCircle2, XCircle, Loader2, ChevronLeft, ChevronRight, BookOpen, Library, Mic, Eye, EyeOff, BookMarked } from 'lucide-react';
 import { useApp } from '@/lib/AppContext';
 import { supabase } from '@/lib/supabase';
+import SEO from '@/lib/SEO';
 import { generateAIContent } from '@/services/aiService';
 import { extractTextFromUpload } from '@/services/ocrService';
 import { rewards } from '@/lib/gamification';
@@ -990,6 +991,12 @@ export default function Reader() {
 
   return (
     <Layout>
+      <SEO
+        title="Smart Reader — Jumu AI"
+        description="Read with Jumu AI's text-to-speech Smart Reader. Features OpenDyslexic fonts, instant word definitions, custom speed controls, and AI-powered comprehension. Designed for neurodiverse learners."
+        canonical="https://jumu.ai/reader"
+        ogType="website"
+      />
       <div className={`min-h-screen transition-colors duration-500 pb-64 ${
         theme === 'cream' ? 'bg-[#fcf8ef]' : 
         theme === 'green' ? 'bg-[#f0f7f0]' : 

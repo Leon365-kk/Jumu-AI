@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+# Disallow sensitive/admin routes
+Disallow: /api/
+Disallow: /api/gemini
+Disallow: /api/health
+
+# Allow service worker
+Allow: /sw.js
+Allow: /manifest.json
+
+# Crawl-delay for polite crawling
+Crawl-delay: 0
+
+# Sitemap location
+Sitemap: https://jumu.ai/sitemap.xml

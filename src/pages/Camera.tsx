@@ -4,6 +4,7 @@ import { Layout } from '@/components/Layout';
 import { Camera, History, ZoomIn, Lightbulb, Type, Play, Pause, X, Volume2, Upload, Loader2 } from 'lucide-react';
 import { useApp } from '@/lib/AppContext';
 import { generateAIContent } from '@/services/aiService';
+import SEO from '@/lib/SEO';
 
 export default function CameraView() {
   const { language } = useApp();
@@ -101,6 +102,13 @@ export default function CameraView() {
 
   return (
     <Layout>
+      <SEO
+        title="Camera OCR — Jumu AI"
+        description="Take a photo or upload an image and extract text instantly with Jumu AI's OCR reader. Open-source, local processing — your photos never leave your device."
+        canonical="https://jumu.ai/camera"
+        ogType="website"
+        noIndex={true}
+      />
       <div className="relative min-h-[calc(100vh-200px)] lg:h-[calc(100vh-160px)] w-full flex flex-col px-4 md:px-12 lg:px-24">
         {/* Camera Viewport */}
         <div className="relative flex-1 bg-black rounded-xl overflow-hidden shadow-2xl">

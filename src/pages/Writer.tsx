@@ -22,6 +22,7 @@ import { TapEffect } from '@/components/TapEffect';
 import { generateAIContent } from '@/services/aiService';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import SEO from '@/lib/SEO';
 import { rewards } from '@/lib/gamification';
 
 interface Genre {
@@ -127,6 +128,12 @@ export default function Writer() {
 
   return (
     <Layout>
+      <SEO
+        title="AI Story Maker — Jumu AI"
+        description="Transform your wild ideas into beautiful stories with the Jumu AI Story Maker. Let AI guide your creative writing journey with genre-specific templates."
+        canonical="https://jumu.ai/writer"
+        ogType="website"
+      />
       <div className="max-w-4xl mx-auto px-6 pb-32">
         <motion.section 
           initial={{ opacity: 0, y: 20 }}

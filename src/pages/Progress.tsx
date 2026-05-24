@@ -5,6 +5,7 @@ import { Badges } from '@/components/Badges';
 import { useState, useEffect } from 'react';
 import { useApp } from '@/lib/AppContext';
 import { supabase } from '@/lib/supabase';
+import SEO from '@/lib/SEO';
 
 interface ProgressData {
   dailyGoalMinutes: number;
@@ -123,6 +124,12 @@ export default function Progress() {
 
   return (
     <Layout>
+      <SEO
+        title="Reading Progress — Jumu AI"
+        description="Track your learning journey with Jumu AI's Progress dashboard. See your reading streaks, XP, badges, and weekly activity at a glance."
+        canonical="https://jumu.ai/progress"
+        ogType="website"
+      />
       <div className="max-w-4xl mx-auto px-6 pb-32">
         {/* Header & Encouragement */}
         <motion.section 

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/lib/AppContext';
 import { Language } from '@/lib/translations';
+import SEO from '@/lib/SEO';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -34,6 +35,13 @@ export default function Settings() {
 
   return (
     <Layout hideNav>
+      <SEO
+        title="Settings — Jumu AI"
+        description="Customize your Jumu AI experience. Adjust your preferred language, theme, font (including OpenDyslexic), reading goals, and voice assistant settings."
+        canonical="https://jumu.ai/settings"
+        ogType="website"
+        noIndex={true}
+      />
       <header className="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center max-w-7xl mx-auto">
         <h1 className="text-primary font-headline font-extrabold text-2xl tracking-tight">Jumu Ai</h1>
         <button 

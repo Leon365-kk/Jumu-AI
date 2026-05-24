@@ -5,6 +5,7 @@ import { useApp } from '@/lib/AppContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookMarked, Search, Trash2, ExternalLink, Loader2, Sparkles, BookOpen, Mic } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import SEO from '@/lib/SEO';
 
 interface GlossaryWord {
   id: string;
@@ -66,6 +67,12 @@ export default function Glossary() {
 
   return (
     <Layout>
+      <SEO
+        title="Personal Glossary — Jumu AI"
+        description="Build your personal vocabulary glossary with Jumu AI. Save words you encounter while reading with definitions, examples, and IPA pronunciations."
+        canonical="https://jumu.ai/glossary"
+        ogType="website"
+      />
       <div className="max-w-5xl mx-auto px-6 pb-24">
         <header className="mb-12">
           <div className="flex items-center gap-4 mb-4">

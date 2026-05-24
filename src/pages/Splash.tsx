@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
+import SEO from '@/lib/SEO';
 
 export default function Splash() {
   const navigate = useNavigate();
@@ -15,6 +16,12 @@ export default function Splash() {
 
   return (
     <Layout hideNav>
+      <SEO
+        title="Jumu AI — Welcome"
+        description="Jumu AI: A cognitive sanctuary for neurodiverse learners. Smart reader, AI story maker, math visualizer, and more."
+        canonical={typeof window !== 'undefined' ? window.location.origin : 'https://jumu.ai'}
+        noIndex
+      />
       <div className="h-screen flex flex-col items-center justify-center text-center px-6 overflow-hidden">
         <motion.div 
           initial={{ scale: 0.8, opacity: 0 }}

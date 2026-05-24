@@ -19,15 +19,27 @@ View your app in AI Studio: https://ai.studio/apps/a890665c-e5b4-4bf6-8e47-a57e7
 3. Run the app:
    `npm run dev`
 
-## Deploying to Vercel
+## Deploying to Vercel (Frontend) + Render (API Backend)
 
-Add these environment variables in **Project Settings > Environment Variables** for **Production**, then redeploy:
+This app uses a dual-hosting setup: Vercel serves the SPA, and Render runs the Express API proxy.
 
+### On Vercel
+
+Add these environment variables in **Project Settings > Environment Variables** for **Production**:
+
+- `VITE_API_URL=https://jumu-ai.onrender.com` — points frontend API calls to the Render backend
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
-- `GEMINI_API_KEY` (if you are using `/api/gemini` on the deployed server)
 
-If `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` is missing, the app will now show a configuration warning screen instead of a blank page.
+### On Render
+
+Ensure `NVIDIA_API_KEY` is set. The CORS middleware on Render accepts requests from any `*.vercel.app` origin automatically, so the Vercel frontend can call the Render API without issues.
+
+### Verifying the setup
+
+1. Vercel serves `your-app.vercel.app` (the React SPA)
+2. Vercel proxy-rewrites `/api/*` → `https://jumu-ai.onrender.com/api/*`
+3. Or, without rewrites: the frontend uses `VITE_API_URL` to call `https://jumu-ai.onrender.com/api/*` directly
 
 ## Reader Upload + Voice
 

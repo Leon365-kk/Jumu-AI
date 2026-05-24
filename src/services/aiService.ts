@@ -15,9 +15,11 @@ export interface GeminiResponse {
   error?: string;
 }
 
+const API_BASE = (import.meta as any).env.VITE_API_URL || '';
+
 export async function generateAIContent(request: GeminiRequest): Promise<GeminiResponse> {
   try {
-    const response = await fetch('/api/gemini', {
+    const response = await fetch(`${API_BASE}/api/gemini`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

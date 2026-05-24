@@ -4,6 +4,7 @@ import { User, ArrowRight, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/lib/AppContext';
+import SEO from '@/lib/SEO';
 
 export default function OnboardingName() {
   const navigate = useNavigate();

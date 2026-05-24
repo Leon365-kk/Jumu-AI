@@ -6,6 +6,7 @@ import { useApp } from '@/lib/AppContext';
 import { TapEffect } from '@/components/TapEffect';
 import { generateAIContent } from '@/services/aiService';
 import { rewards } from '@/lib/gamification';
+import SEO from '@/lib/SEO';
 
 interface MathSolution {
   problem: string;
@@ -90,6 +91,12 @@ export default function MathHelper() {
 
   return (
     <Layout>
+      <SEO
+        title="Math Visualizer — Jumu AI"
+        description="Break down complex math problems into easy-to-follow steps with Jumu AI's Math Visualizer. Upload a problem or snap a photo for an instant step-by-step solution."
+        canonical="https://jumu.ai/math"
+        ogType="website"
+      />
       <div className="max-w-4xl mx-auto px-6 pb-32">
         {/* Header */}
         <motion.section 
