@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -29,7 +29,7 @@ function convertMessages(contents: any[]): { textMessages: any[]; imagePayloads:
 
   for (const item of contents) {
     const role = item.role === "model" ? "assistant" : item.role || "user";
-    let textParts: string[] = [];
+    const textParts: string[] = [];
 
     for (const part of item.parts || []) {
       if (typeof part.text === "string" && part.text.trim()) {
@@ -79,20 +79,20 @@ async function startServer() {
     console.error("ERROR: NVIDIA_API_KEY is not set");
   }
 
-  // CORS — allow requests from Vercel frontend and local dev
+  // CORS - allow requests from Vercel frontend and local dev
   const allowedOrigins = [
-    process.env.VITE_RENDER_URL?.replace(/\/$/, '') || 'https://jumu-ai.onrender.com',
+    process.env.VITE_RENDER_URL?.replace(/\/$/, "") || "https://jumu-ai.onrender.com",
     /https:\/\/.*\.vercel\.app$/,
     "https://jumuai.stemlensnetwork.com",
     "http://localhost:5173",
   ];
   app.use(cors({ origin: allowedOrigins, credentials: true }));
-  app.options('*', cors({ origin: allowedOrigins, credentials: true }));
+  app.options("*", cors({ origin: allowedOrigins, credentials: true }));
 
   app.use(express.json({ limit: "10mb" }));
 
   // SEO & Security headers
-  app.use((_req, res, next) => {
+  app.use((_req: Request, res: Response, next: NextFunction) => {
     // Prevent MIME sniffing
     res.setHeader("X-Content-Type-Options", "nosniff");
     // Prevent clickjacking
@@ -132,7 +132,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
   // API Proxy: translating the app's Gemini-style payload to NVIDIA NIM format
-  app.post("/api/gemini", async (req, res) => {
+  app.post("/api/gemini", async (req: Request, res: Response) => {
     const { model, contents, config } = req.body || {};
 
     if (!NVIDIA_KEY) {
@@ -152,13 +152,13 @@ async function startServer() {
         max_tokens: 4096,
       };
 
-      // Map Gemini config → NIM config
+      // Map Gemini config to NIM config
       const temp = config?.temperature ?? config?.temperature ?? 0.7;
       const topP = config?.topP ?? config?.top_p ?? 0.9;
       if (temp !== undefined) body.temperature = temp;
       if (topP !== undefined) body.top_p = topP;
 
-      // responseMimeType: "application/json" → force structured JSON output
+      // responseMimeType: "application/json" -> force structured JSON output
       if (config?.responseMimeType === "application/json") {
         body.response_format = { type: "json_object" };
       }
@@ -173,13 +173,13 @@ async function startServer() {
       });
 
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
+        const errorBody: any = await response.json().catch(() => ({}));
         throw new Error(errorBody.error?.message || `NVIDIA API error: HTTP ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
 
-      // NVIDIA response → app's expected { text, candidates } shape
+      // NVIDIA response -> app's expected { text, candidates } shape
       const text = data.choices?.[0]?.message?.content ?? "";
       const stopReason = data.choices?.[0]?.finish_reason ?? null;
 
@@ -204,8 +204,8 @@ async function startServer() {
     }
   });
 
-  // Health-check endpoint — confirms the NVIDIA proxy is reachable
-  app.get("/api/health", (_req, res) => {
+  // Health-check endpoint - confirms the NVIDIA proxy is reachable
+  app.get("/api/health", (_req: Request, res: Response) => {
     res.json({
       status: "ok",
       provider: "nvidia-nim",
@@ -223,7 +223,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+    app.get("*", (_req: Request, res: Response) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Check, Trash2, ListTodo, Circle, Loader2 } from 'lucide-react';
 import { TapEffect } from './TapEffect';
@@ -13,60 +13,103 @@ interface Todo {
   created_at?: string;
 }
 
+const TODO_STORAGE_KEY = 'jumu_todos';
+
 export function TodoList() {
   const { user } = useApp();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load from Supabase (or localStorage fallback)
+  const loadLocalTodos = useCallback(() => {
+    const saved = localStorage.getItem(TODO_STORAGE_KEY);
+    if (!saved) {
+      setTodos([]);
+      return;
+    }
+
+    try {
+      setTodos(JSON.parse(saved));
+    } catch (e) {
+      console.error('Failed to parse todos', e);
+    }
+  }, []);
+
+  const fetchTodos = useCallback(async () => {
+    if (user && user.id !== 'guest-user') {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('todos')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          // Table might not exist yet, fallback to localStorage
+          console.warn('Todos table may not exist, falling back to local storage', error);
+          loadLocalTodos();
+        } else if (data) {
+          setTodos(data);
+        }
+      } catch (e) {
+        console.error('Failed to fetch todos from Supabase', e);
+        loadLocalTodos();
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      loadLocalTodos();
+    }
+  }, [loadLocalTodos, user]);
+
+  // Initial load
   useEffect(() => {
-    const fetchTodos = async () => {
-      if (user && user.id !== 'guest-user') {
-        setIsLoading(true);
-        try {
-          const { data, error } = await supabase
-            .from('todos')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
-
-          if (error) {
-            // Table might not exist yet, fallback to localStorage
-            console.warn('Todos table may not exist, falling back to local storage', error);
-            loadLocal();
-          } else if (data) {
-            setTodos(data);
-          }
-        } catch (e) {
-          console.error('Failed to fetch todos from Supabase', e);
-          loadLocal();
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
-        loadLocal();
-      }
-    };
-
-    const loadLocal = () => {
-      const saved = localStorage.getItem('jumu_todos');
-      if (saved) {
-        try {
-          setTodos(JSON.parse(saved));
-        } catch (e) {
-          console.error('Failed to parse todos', e);
-        }
-      }
-    };
-
     fetchTodos();
-  }, [user]);
+  }, [fetchTodos]);
+
+  // Keep todos synced across pages/tabs:
+  // - Supabase realtime for signed-in users
+  // - localStorage "storage" event for guest/local mode
+  useEffect(() => {
+    if (user && user.id !== 'guest-user') {
+      const channel = supabase
+        .channel(`todos_${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'todos',
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            fetchTodos();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === TODO_STORAGE_KEY) {
+        loadLocalTodos();
+      }
+    };
+
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [fetchTodos, loadLocalTodos, user]);
 
   // Save to localStorage whenever todos change (as backup and for guests)
   useEffect(() => {
     if (!user || user.id === 'guest-user') {
-      localStorage.setItem('jumu_todos', JSON.stringify(todos));
+      localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(todos));
     }
   }, [todos, user]);
 
@@ -83,7 +126,7 @@ export function TodoList() {
     };
 
     // Optimistic Update
-    setTodos([newTodo, ...todos]);
+    setTodos((prev) => [newTodo, ...prev]);
     setInputValue('');
 
     if (user && user.id !== 'guest-user') {
@@ -114,9 +157,9 @@ export function TodoList() {
     const newStatus = !todoToToggle.completed;
 
     // Optimistic Update
-    setTodos(todos.map(todo => 
-      todo.id === id ? { ...todo, completed: newStatus } : todo
-    ));
+    setTodos((prev) =>
+      prev.map((todo) => (todo.id === id ? { ...todo, completed: newStatus } : todo))
+    );
 
     if (user && user.id !== 'guest-user') {
       try {
@@ -134,7 +177,7 @@ export function TodoList() {
 
   const deleteTodo = async (id: string) => {
     // Optimistic Update
-    setTodos(todos.filter(todo => todo.id !== id));
+    setTodos((prev) => prev.filter((todo) => todo.id !== id));
 
     if (user && user.id !== 'guest-user') {
       try {
@@ -243,4 +286,3 @@ export function TodoList() {
     </div>
   );
 }
-

@@ -22,6 +22,7 @@ import {
 import { useApp } from '@/lib/AppContext';
 import { TapEffect } from '@/components/TapEffect';
 import SEO from '@/lib/SEO';
+import { TodoList } from '@/components/TodoList';
 
 interface Sound {
   id: string;
@@ -253,6 +254,9 @@ export default function FocusZone() {
                 className="w-full h-2 bg-surface-container-high rounded-lg appearance-none cursor-pointer accent-primary"
               />
             </div>
+
+            {/* Shared task list used on Dashboard and Focus Zone */}
+            <TodoList />
           </div>
         </div>
 
