@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { Book, Loader2, Search, ChevronRight, Library, BookOpen, Sparkles, BarChart3, ArrowRight } from 'lucide-react';
+import { Book, Loader2, Search, ChevronRight, Library, BookOpen, BarChart3, ArrowRight, Star } from 'lucide-react';
 import { useApp } from '@/lib/AppContext';
 import { cn } from '@/lib/utils';
 import SEO from '@/lib/SEO';
@@ -45,11 +45,18 @@ export default function Writer() {
     setIsLibraryLoading(true);
     const q = customQuery || searchQuery;
     try {
-      const response = await fetch(`https://gutendex.com/books/?search=${encodeURIComponent(q)}&languages=${selectedLanguage}`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      const response = await fetch(`https://gutendex.com/books/?search=${encodeURIComponent(q)}&languages=${selectedLanguage}`, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
       const data = await response.json();
       setLibraryBooks(data.results || []);
     } catch (error) {
       console.error("Library Error:", error);
+      setLibraryBooks([]);
     } finally {
       setIsLibraryLoading(false);
     }
@@ -144,12 +151,12 @@ export default function Writer() {
           className="mb-12"
         >
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
-              <Library className="w-6 h-6 text-primary" />
+            <div className="w-12 h-12 bg-red-600/10 rounded-lg flex items-center justify-center">
+              <Library className="w-6 h-6 text-red-600" />
             </div>
-            <h2 className="font-headline text-4xl font-extrabold text-primary">Classic Library</h2>
+            <h2 className="font-headline text-4xl font-extrabold text-red-600">Classic Library</h2>
           </div>
-          <p className="text-on-surface-variant text-lg bg-surface-container-low/50 p-4 rounded-xl border border-surface-container-high/30">
+          <p className="text-gray-600 text-lg bg-gray-100/50 p-4 rounded-xl border border-gray-300/30">
             Open a digital world of classic stories. Explore thousands of free children's books and historical favorites.
           </p>
 
@@ -164,8 +171,8 @@ export default function Writer() {
                 className={cn(
                   "px-6 py-3 rounded-xl font-bold transition-all border-2",
                   searchQuery === cat.query 
-                    ? "bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105" 
-                    : "bg-surface-container-low border-transparent text-on-surface-variant hover:bg-surface-container-high"
+                    ? "bg-red-600 border-red-600 text-white scale-105" 
+                    : "bg-gray-100 border-transparent text-gray-600 hover:bg-gray-200"
                 )}
               >
                 {cat.name}
@@ -177,7 +184,7 @@ export default function Writer() {
         {/* Continue Reading & Progress Section */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           <div className="lg:col-span-2">
-            <h3 className="font-headline text-2xl font-bold text-on-surface mb-6">Continue Reading</h3>
+            <h3 className="font-headline text-2xl font-bold text-gray-900 mb-6">Continue Reading</h3>
             {recentBooks.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {recentBooks.map((book) => {
@@ -188,9 +195,9 @@ export default function Writer() {
                         <Link 
                           to="/reader" 
                           state={{ bookTitle: book.title, bookId: book.book_id, bookUrl: book.book_url, bookCover: book.cover_url }}
-                          className="flex bg-white rounded-2xl p-4 border border-surface-container-high transition-all hover:shadow-xl group"
+                          className="flex bg-white rounded-lg p-4 border border-gray-300 transition-all hover:shadow-xl group"
                         >
-                          <div className="w-20 h-28 bg-surface-container-low rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
+                          <div className="w-20 h-28 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
                             {book.cover_url ? (
                               <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                             ) : (
@@ -201,11 +208,11 @@ export default function Writer() {
                           </div>
                           <div className="ml-4 flex-1 flex flex-col justify-between py-1">
                             <div>
-                              <h4 className="font-bold text-on-surface line-clamp-2 leading-snug mb-1">{book.title}</h4>
-                              <div className="text-xs font-bold text-primary uppercase tracking-widest">{percent >= 100 ? 'Completed' : `${Math.round(percent)}% Read`}</div>
+                              <h4 className="font-bold text-gray-900 line-clamp-2 leading-snug mb-1">{book.title}</h4>
+                              <div className="text-xs font-bold text-red-600 uppercase tracking-widest">{percent >= 100 ? 'Completed' : `${Math.round(percent)}% Read`}</div>
                             </div>
-                            <div className="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mt-3">
-                              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${percent}%` }} />
+                            <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden mt-3">
+                              <div className="h-full bg-red-600 rounded-full transition-all" style={{ width: `${percent}%` }} />
                             </div>
                           </div>
                         </Link>
@@ -215,16 +222,16 @@ export default function Writer() {
                 })}
               </div>
             ) : (
-              <div className="bg-white rounded-2xl p-8 text-center border-2 border-dashed border-surface-container-highest">
+              <div className="bg-white rounded-lg p-8 text-center border-2 border-dashed border-gray-300">
                 <Book className="w-10 h-10 text-stone-200 mx-auto mb-4" />
-                <p className="text-on-surface-variant font-medium">Select a book below to start your journey!</p>
+                <p className="text-gray-600 font-medium">Select a book below to start your journey!</p>
               </div>
             )}
           </div>
 
-          <div className="bg-white rounded-3xl p-8 border border-surface-container-high shadow-sm flex flex-col h-full">
-            <h3 className="font-headline text-xl font-bold text-on-surface mb-6 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-primary" />
+          <div className="bg-white rounded-xl p-8 border border-gray-300 shadow-sm flex flex-col h-full">
+            <h3 className="font-headline text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-red-600" />
               Reading Progress
             </h3>
             {recentBooks.length > 0 ? (
@@ -253,8 +260,8 @@ export default function Writer() {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="mt-4 pt-4 border-t border-surface-container-highest text-center">
-                  <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Pages Read by Book</p>
+                <div className="mt-4 pt-4 border-t border-gray-300 text-center">
+                  <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">Pages Read by Book</p>
                 </div>
               </>
             ) : (
@@ -269,8 +276,8 @@ export default function Writer() {
         {/* Featured Section */}
         {featuredBooks.length > 0 && !searchQuery && (
           <section className="mb-12">
-            <h3 className="font-headline text-2xl font-bold text-primary mb-6 flex items-center gap-2">
-              <Sparkles className="w-6 h-6" />
+            <h3 className="font-headline text-2xl font-bold text-red-600 mb-6 flex items-center gap-2">
+              <Star className="w-6 h-6" />
               Editor's Top Picks
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -278,21 +285,21 @@ export default function Writer() {
                 <motion.div 
                   key={`featured-${book.id}`}
                   whileHover={{ y: -5 }}
-                  className="bg-primary/5 rounded-3xl p-6 border-2 border-primary/20 flex flex-col items-center text-center group cursor-pointer"
+                  className="bg-red-600/5 rounded-xl p-6 border-2 border-red-600/20 flex flex-col items-center text-center group cursor-pointer"
                   onClick={() => readBookInternal(book)}
                 >
-                  <div className="w-full aspect-[3/4] bg-white rounded-2xl mb-4 shadow-xl overflow-hidden">
+                  <div className="w-full aspect-[3/4] bg-white rounded-lg mb-4 shadow-xl overflow-hidden">
                     {book.formats['image/jpeg'] ? (
                       <img src={book.formats['image/jpeg']} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-primary/5">
-                        <Book className="w-12 h-12 text-primary/20" />
+                      <div className="w-full h-full flex items-center justify-center bg-red-600/5">
+                        <Book className="w-12 h-12 text-red-600/20" />
                       </div>
                     )}
                   </div>
-                  <h4 className="font-bold text-primary line-clamp-1 mb-1">{book.title}</h4>
-                  <p className="text-xs font-medium text-primary/60 mb-4">{book.authors[0]?.name || 'Unknown'}</p>
-                  <button className="w-full py-3 bg-primary text-white rounded-xl font-bold text-xs shadow-lg shadow-primary/20">
+                  <h4 className="font-bold text-red-600 line-clamp-1 mb-1">{book.title}</h4>
+                  <p className="text-xs font-medium text-red-600/60 mb-4">{book.authors[0]?.name || 'Unknown'}</p>
+                  <button className="w-full py-3 bg-red-600 text-white rounded-xl font-bold text-xs">
                     Read Now
                   </button>
                 </motion.div>
@@ -302,24 +309,24 @@ export default function Writer() {
         )}
 
         <div className="space-y-8">
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-surface-container-highest">
+          <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-300">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/60 w-5 h-5" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600/60 w-5 h-5" />
                 <input 
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && searchBooks()}
                   placeholder="Search titles or authors..."
-                  className="w-full bg-surface-container-low border-none rounded-2xl pl-12 pr-6 py-4 text-lg font-medium"
+                  className="w-full bg-gray-100 border-none rounded-lg pl-12 pr-6 py-4 text-lg font-medium"
                 />
               </div>
               <div className="flex gap-4">
                 <select 
                   value={selectedLanguage}
                   onChange={e => setSelectedLanguage(e.target.value)}
-                  className="bg-surface-container-low border-none rounded-2xl px-6 py-4 font-bold text-primary focus:ring-0"
+                  className="bg-gray-100 border-none rounded-lg px-6 py-4 font-bold text-red-600 focus:ring-0"
                 >
                   <option value="en">English</option>
                   <option value="es">Spanish</option>
@@ -328,7 +335,7 @@ export default function Writer() {
                 <button 
                   onClick={() => searchBooks()}
                   disabled={isLibraryLoading}
-                  className="bg-primary text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                  className="bg-red-600 text-white px-8 py-4 rounded-lg font-bold flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
                 >
                   {isLibraryLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
                   Search
@@ -344,9 +351,9 @@ export default function Writer() {
                 layout
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-white border border-surface-container-high/50 rounded-3xl p-6 flex gap-6 hover:shadow-xl transition-all group"
+                className="bg-white border border-gray-300/50 rounded-xl p-6 flex gap-6 hover:shadow-xl transition-all group"
               >
-                <div className="w-24 h-32 bg-surface-container-low rounded-xl flex items-center justify-center shadow-inner overflow-hidden flex-shrink-0">
+                <div className="w-24 h-32 bg-gray-100 rounded-xl flex items-center justify-center shadow-inner overflow-hidden flex-shrink-0">
                   {book.formats['image/jpeg'] ? (
                     <img src={book.formats['image/jpeg']} alt={book.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                   ) : (
@@ -355,15 +362,15 @@ export default function Writer() {
                 </div>
                 <div className="flex flex-col justify-between flex-1">
                   <div>
-                    <h4 className="font-bold text-lg line-clamp-2 mb-1 group-hover:text-primary transition-colors">{book.title}</h4>
-                    <p className="text-on-surface-variant font-medium text-sm">{book.authors[0]?.name || 'Unknown Author'}</p>
+                    <h4 className="font-bold text-lg line-clamp-2 mb-1 group-hover:text-red-600 transition-colors">{book.title}</h4>
+                    <p className="text-gray-600 font-medium text-sm">{book.authors[0]?.name || 'Unknown Author'}</p>
                   </div>
                   <div className="flex items-center justify-between mt-4">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400">{book.download_count.toLocaleString()} reads</span>
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={() => readBookInternal(book)}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl font-bold text-xs hover:bg-primary/90 transition-all shadow-sm active:scale-95"
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-xs hover:bg-red-600/90 transition-all shadow-sm active:scale-95"
                       >
                         <BookOpen className="w-3 h-3" />
                         Read
@@ -372,7 +379,7 @@ export default function Writer() {
                         href={book.formats['text/html'] || book.formats['text/plain'] || `https://www.gutenberg.org/ebooks/${book.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center hover:bg-primary hover:text-white transition-all shadow-sm"
+                        className="w-10 h-10 bg-red-600/10 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-sm"
                       >
                         <ChevronRight className="w-5 h-5" />
                       </a>
@@ -384,9 +391,9 @@ export default function Writer() {
           </div>
 
           {libraryBooks.length === 0 && !isLibraryLoading && (
-            <div className="text-center py-20 bg-surface-container-low/30 rounded-3xl border-2 border-dashed border-surface-container-high/50">
+            <div className="text-center py-20 bg-gray-100/30 rounded-xl border-2 border-dashed border-gray-300/50">
               <Library className="w-16 h-16 text-stone-300 mx-auto mb-4" />
-              <p className="text-on-surface-variant font-medium">No results found. Try a different search term!</p>
+              <p className="text-gray-600 font-medium">No results found. Try a different search term!</p>
             </div>
           )}
         </div>

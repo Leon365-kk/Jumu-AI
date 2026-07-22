@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Camera, Sprout, Settings, User, LogOut, Mic } from 'lucide-react';
+import { Home, Camera, Sprout, Settings, User, LogOut, Mic, BookOpen, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { VoiceAssistant } from './VoiceAssistant';
-import { useApp } from '@/lib/AppContext';
+import { useAuth } from '@/lib/AuthContext';
+import { useGamification } from '@/lib/GamificationContext';
+import { useUI } from '@/lib/UIContext';
 import { TapEffect } from './TapEffect';
 import { XPNotification, LevelUpNotification, BadgeNotification } from './XPNotifications';
 
@@ -15,12 +17,14 @@ interface LayoutProps {
 
 export function Layout({ children, hideNav = false }: LayoutProps) {
   const location = useLocation();
-  const { 
-    logout, user, setIsVoiceAssistantOpen, isVoiceAssistantOpen, 
-    xpNotification, setXpNotification, 
-    levelUpNotification, setLevelUpNotification,
-    badgeNotification, setBadgeNotification
-  } = useApp();
+  const { logout, user } = useAuth();
+  const { isVoiceAssistantOpen, setIsVoiceAssistantOpen } = useUI();
+  const { xpNotification, setXpNotification, levelUpNotification, setLevelUpNotification, badgeNotification, setBadgeNotification } = useGamification();
+
+  const navItems = [
+    { path: '/dashboard', icon: Home, label: 'Home' },
+    { path: '/progress', icon: BarChart3, label: 'Growth' },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-surface">
@@ -46,33 +50,51 @@ export function Layout({ children, hideNav = false }: LayoutProps) {
           />
         )}
       </AnimatePresence>
+      
       {/* Header */}
       {!hideNav && (
-        <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl px-6 py-4 border-b border-surface-container-high/50">
+        <header className="fixed top-0 w-full z-50 glass-nav px-6 py-3 safe-area-top">
           <div className="max-w-7xl mx-auto flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-surface-container-high border-2 border-primary/20 shadow-sm">
-                <img 
-                  src={(user?.user_metadata as any)?.avatar_url || "https://picsum.photos/seed/user/100/100"} 
-                  alt="Profile" 
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
+            <Link to="/dashboard" className="flex items-center gap-3 group">
+              <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center text-primary font-bold text-sm transition-all">
+                J
               </div>
-            </div>
-            <div className="flex items-center gap-2">
+              <span className="font-headline font-bold text-lg text-on-surface hidden sm:block">JumuAI</span>
+            </Link>
+            
+            <div className="flex items-center gap-1">
+              {user && user.id !== 'guest-user' && (
+                <Link 
+                  to="/progress" 
+                  className={cn(
+                    "p-2.5 rounded-xl transition-all",
+                    location.pathname === '/progress' 
+                      ? 'text-primary bg-primary/10' 
+                      : 'text-on-surface-variant hover:bg-surface-container-high'
+                  )}
+                  title="Growth"
+                >
+                  <BarChart3 className="w-5 h-5" />
+                </Link>
+              )}
               <Link 
                 to="/settings" 
-                className="p-2.5 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all active:scale-90"
+                className={cn(
+                  "p-2.5 rounded-xl transition-all",
+                  location.pathname === '/settings' 
+                    ? 'text-primary bg-primary/10' 
+                    : 'text-on-surface-variant hover:bg-surface-container-high'
+                )}
+                title="Settings"
               >
-                <Settings className="w-6 h-6" />
+                <Settings className="w-5 h-5" />
               </Link>
               <button 
                 onClick={logout}
-                className="p-2.5 text-on-surface-variant hover:bg-error/10 hover:text-error rounded-full transition-all active:scale-90"
+                className="p-2.5 text-on-surface-variant hover:bg-error/10 hover:text-error rounded-xl transition-all"
                 title="Logout"
               >
-                <LogOut className="w-6 h-6" />
+                <LogOut className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -80,7 +102,7 @@ export function Layout({ children, hideNav = false }: LayoutProps) {
       )}
 
       {/* Main Content with Transition */}
-      <main className={cn("flex-1 overflow-x-hidden", !hideNav && "pt-24 pb-32")}>
+      <main className={cn("flex-1 overflow-x-hidden", !hideNav && "pt-20 pb-28")}>
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -88,6 +110,7 @@ export function Layout({ children, hideNav = false }: LayoutProps) {
           exit={{ opacity: 0, y: -10, scale: 0.98 }}
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           className="h-full"
+          style={{ willChange: 'transform, opacity' }}
         >
           {children}
         </motion.div>
@@ -98,62 +121,58 @@ export function Layout({ children, hideNav = false }: LayoutProps) {
 
       {/* Bottom Nav */}
       {!hideNav && (
-        <nav className="fixed bottom-0 w-full z-50 pb-[env(safe-area-inset-bottom,24px)] pt-3 px-6 bg-surface/90 backdrop-blur-2xl border-t border-surface-container-high/50 safe-area-bottom">
+        <nav className="fixed bottom-0 w-full z-50 pb-[env(safe-area-inset-bottom,24px)] pt-2 px-6 glass-nav border-t border-surface-container/50">
           <div className="max-w-2xl mx-auto flex justify-around items-center h-16 md:gap-12 lg:gap-24">
-            <Link 
-              to="/dashboard" 
-              className={cn(
-                "flex flex-col items-center justify-center w-12 h-full transition-all relative",
-                location.pathname === '/dashboard' ? "text-primary" : "text-on-surface-variant/60"
-              )}
-            >
-              <TapEffect className="flex flex-col items-center">
-                <Home className={cn("w-6 h-6 transition-transform", location.pathname === '/dashboard' && "scale-110")} />
-                <span className="text-[10px] font-bold mt-1 uppercase tracking-tighter">Home</span>
-              </TapEffect>
-              {location.pathname === '/dashboard' && (
-                <motion.div layoutId="nav-dot" className="absolute -bottom-1 w-1 h-1 bg-primary rounded-full" />
-              )}
-            </Link>
-
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link 
+                  key={item.path}
+                  to={item.path} 
+                  className={cn(
+                    "flex flex-col items-center justify-center w-12 h-full transition-all relative",
+                    isActive ? "text-primary" : "text-on-surface-muted hover:text-on-surface-variant"
+                  )}
+                >
+                  <TapEffect className="flex flex-col items-center">
+                    <item.icon className={cn("w-6 h-6 transition-transform", isActive && "scale-110")} />
+                    <span className="text-[10px] font-bold mt-1 uppercase tracking-tight">{item.label}</span>
+                  </TapEffect>
+                  {isActive && (
+                    <motion.div layoutId="nav-dot" className="absolute -bottom-1 w-1 h-1 bg-primary rounded-full" />
+                  )}
+                </Link>
+              );
+            })}
+            
             <button 
               onClick={() => setIsVoiceAssistantOpen(!isVoiceAssistantOpen)}
               className={cn(
                 "flex flex-col items-center justify-center w-12 h-full transition-all relative",
-                isVoiceAssistantOpen ? "text-primary" : "text-on-surface-variant/60"
+                isVoiceAssistantOpen ? "text-primary" : "text-on-surface-muted hover:text-on-surface-variant"
               )}
             >
               <TapEffect className="flex flex-col items-center">
-                <Mic className={cn("w-6 h-6 transition-transform", isVoiceAssistantOpen && "scale-110")} />
-                <span className="text-[10px] font-bold mt-1 uppercase tracking-tighter">Voice</span>
+                <div className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+                  isVoiceAssistantOpen 
+                    ? "bg-primary text-white shadow-glow" 
+                    : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container"
+                )}>
+                  <Mic className={cn("w-5 h-5", isVoiceAssistantOpen && "animate-pulse")} />
+                </div>
               </TapEffect>
             </button>
             
             <Link 
               to="/camera" 
-              className="relative group"
+              className="relative group flex flex-col items-center"
             >
               <TapEffect>
-                <div className="flex items-center justify-center bg-primary text-white rounded-2xl w-14 h-14 -mt-8 shadow-lg shadow-primary/30 border-4 border-surface group-active:scale-95 transition-transform">
-                  <Camera className="w-7 h-7 fill-current" />
+                <div className="flex items-center justify-center bg-primary text-white rounded-2xl w-14 h-14 -mt-6 border-4 border-surface group-active:scale-95 transition-transform">
+                  <Camera className="w-6 h-6" />
                 </div>
               </TapEffect>
-            </Link>
-            
-            <Link 
-              to="/progress" 
-              className={cn(
-                "flex flex-col items-center justify-center w-16 h-full transition-all relative",
-                location.pathname === '/progress' ? "text-primary" : "text-on-surface-variant/60"
-              )}
-            >
-              <TapEffect className="flex flex-col items-center">
-                <Sprout className={cn("w-6 h-6 transition-transform", location.pathname === '/progress' && "scale-110")} />
-                <span className="text-[10px] font-bold mt-1 uppercase tracking-tighter">Growth</span>
-              </TapEffect>
-              {location.pathname === '/progress' && (
-                <motion.div layoutId="nav-dot" className="absolute -bottom-1 w-1 h-1 bg-primary rounded-full" />
-              )}
             </Link>
           </div>
         </nav>

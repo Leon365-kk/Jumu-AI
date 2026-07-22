@@ -142,8 +142,8 @@ export default function CameraView() {
                 {/* Detecting Hint */}
                 <div className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/40 backdrop-blur-md px-6 py-3 rounded-full text-white/90">
                   <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
                   </span>
                   <span className="font-headline text-sm font-medium tracking-wide uppercase">Detecting Text...</span>
                 </div>
@@ -234,7 +234,7 @@ export default function CameraView() {
               className="group relative flex items-center justify-center p-2 active:scale-90 transition-all"
             >
               <div className="absolute inset-0 bg-primary/20 rounded-full scale-125 blur-xl group-hover:scale-150 transition-transform" />
-              <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary-container rounded-full flex items-center justify-center shadow-2xl relative z-10">
+              <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center relative z-10">
                 {isProcessing ? <Loader2 className="w-10 h-10 text-white animate-spin" /> : <Camera className="w-10 h-10 text-white fill-current" />}
               </div>
             </button>

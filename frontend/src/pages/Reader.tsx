@@ -2,25 +2,22 @@ import { motion, AnimatePresence } from 'motion/react';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { Sparkles, Wand2, FileText, Type, AlignLeft, AlignCenter, AlignRight, Plus, Minus, Play, Pause, Upload, Clipboard, Volume2, Info, Brain, CheckCircle2, XCircle, Loader2, ChevronLeft, ChevronRight, BookOpen, Library, Mic, Eye, EyeOff, BookMarked } from 'lucide-react';
-import { useApp } from '@/lib/AppContext';
+import { Wand2, FileText, Type, AlignLeft, AlignCenter, AlignRight, Plus, Minus, Play, Pause, Upload, Clipboard, Volume2, Info, Brain, CheckCircle2, XCircle, Loader2, ChevronLeft, ChevronRight, BookOpen, Library, Mic, Eye, EyeOff, BookMarked, Lightbulb } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+import { usePreferences } from '@/lib/PreferencesContext';
+import { useGamification } from '@/lib/GamificationContext';
 import { supabase } from '@/lib/supabase';
 import SEO from '@/lib/SEO';
 import { generateAIContent } from '@/services/aiService';
 import { extractTextFromUpload } from '@/services/ocrService';
 import { rewards } from '@/lib/gamification';
-
-interface QuizQuestion {
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  explanation: string;
-}
+import { ReaderQuiz, type QuizQuestion } from '@/components/Reader/ReaderQuiz';
+import { WordDefinitionModal } from '@/components/Reader/WordDefinitionModal';
 
 const BOOK_CACHE_PREFIX = 'jumu:book:text:v1';
 const BOOK_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const MIN_MEANINGFUL_TEXT_LENGTH = 500;
-const BOOK_FETCH_TIMEOUT_MS = 10000;
+const BOOK_FETCH_TIMEOUT_MS = 30000;
 const READING_PROGRESS_SYNC_INTERVAL_MS = 30000;
 const MIN_PROGRESS_MINUTES = 0.05;
 
@@ -30,7 +27,9 @@ type CachedBookPayload = {
 };
 
 export default function Reader() {
-  const { language, userName, user, addXP } = useApp();
+  const { user } = useAuth();
+  const { language } = usePreferences();
+  const { addXP } = useGamification();
   const location = useLocation();
   const [text, setText] = useState('');
   const [bookTitle, setBookTitle] = useState<string | null>(null);
@@ -407,7 +406,7 @@ export default function Reader() {
         .single();
 
       const today = new Date();
-      const currentDayName = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][today.getDay()];
+      const currentDayName = ['sun','mon','tue','wed','thu','fri','sat'][today.getDay()];
 
       if (currentData) {
         const weeklyActivity = [...(currentData.weekly_activity || [])];
@@ -602,6 +601,15 @@ export default function Reader() {
   useEffect(() => {
     return () => {
       stopTts();
+      // Clean up AudioContext to prevent memory leaks
+      if (audioContextRef.current) {
+        try {
+          audioContextRef.current.close();
+        } catch (e) {
+          // Ignore errors during cleanup
+        }
+        audioContextRef.current = null;
+      }
     };
   }, []);
 
@@ -1001,16 +1009,16 @@ export default function Reader() {
         theme === 'cream' ? 'bg-[#fcf8ef]' : 
         theme === 'green' ? 'bg-[#f0f7f0]' : 
         theme === 'dark' ? 'bg-stone-950' : 
-        'bg-surface'
+        'bg-white'
       }`}>
         <div ref={containerRef} className="max-w-4xl mx-auto px-6 pt-12">
           {/* AI Status Chip */}
           <div className="flex justify-center mb-8">
             <button className={`px-6 py-2 rounded-full border flex items-center gap-2 transition-all ${
-              theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-surface-container-low border-surface-container-highest'
+              theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-gray-100 border-gray-300'
             }`}>
-              <Sparkles className="w-4 h-4 text-primary fill-current" />
-              <span className={`text-sm font-medium ${theme === 'dark' ? 'text-stone-400' : 'text-on-surface-variant'}`}>Jumu Ai is ready to assist</span>
+              <Lightbulb className="w-4 h-4 text-red-600" />
+              <span className={`text-sm font-medium ${theme === 'dark' ? 'text-stone-400' : 'text-gray-600'}`}>Reading tools available</span>
             </button>
           </div>
 
@@ -1019,15 +1027,15 @@ export default function Reader() {
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`rounded-3xl p-12 text-center border-2 border-dashed transition-all ${
-                  theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-white border-surface-container-highest'
+                className={`rounded-xl p-12 text-center border-2 border-dashed transition-all ${
+                  theme === 'dark' ? 'bg-stone-900 border-stone-800' : 'bg-white border-gray-300'
                 }`}
               >
-                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <FileText className="w-10 h-10 text-primary" />
+                <div className="w-20 h-20 bg-red-600/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <FileText className="w-10 h-10 text-red-600" />
                 </div>
-                <h2 className={`font-headline text-3xl font-bold mb-4 ${theme === 'dark' ? 'text-stone-100' : 'text-on-surface'}`}>What would you like to read?</h2>
-                <p className={`mb-8 max-w-sm mx-auto ${theme === 'dark' ? 'text-stone-400' : 'text-on-surface-variant'}`}>Paste text or upload a file to start your personalized reading experience.</p>
+                <h2 className={`font-headline text-3xl font-bold mb-4 ${theme === 'dark' ? 'text-stone-100' : 'text-gray-900'}`}>What would you like to read?</h2>
+                <p className={`mb-8 max-w-sm mx-auto ${theme === 'dark' ? 'text-stone-400' : 'text-gray-600'}`}>Paste text or upload a file to start your personalized reading experience.</p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button 
@@ -1040,12 +1048,12 @@ export default function Reader() {
                       console.error('Failed to read clipboard:', err);
                     }
                   }}
-                  className="flex items-center justify-center gap-2 bg-primary text-white px-8 py-4 rounded-xl font-bold shadow-lg active:scale-95 transition-all"
+                  className="flex items-center justify-center gap-2 bg-red-600 text-white px-8 py-4 rounded-xl font-bold shadow-lg active:scale-95 transition-all"
                 >
                   <Clipboard className="w-5 h-5" />
                   Paste from Clipboard
                 </button>
-                <label className="flex items-center justify-center gap-2 bg-surface-container-low text-primary px-8 py-4 rounded-xl font-bold hover:bg-surface-container-high active:scale-95 transition-all cursor-pointer">
+                <label className="flex items-center justify-center gap-2 bg-gray-100 text-red-600 px-8 py-4 rounded-xl font-bold hover:bg-gray-200 active:scale-95 transition-all cursor-pointer">
                   <input type="file" accept="image/*,.pdf,.txt,.md,.csv,.json,.xml" className="hidden" onChange={handleFileUpload} />
                   {isUploadProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
                   {isUploadProcessing ? 'Extracting Text...' : 'Upload File'}
@@ -1055,8 +1063,8 @@ export default function Reader() {
 
             {recentBooks.length > 0 && (
               <section>
-                <h3 className="font-headline text-2xl font-bold text-on-surface mb-6 flex items-center gap-2">
-                  <Library className="w-6 h-6 text-primary" />
+                <h3 className="font-headline text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <Library className="w-6 h-6 text-red-600" />
                   Recently Read
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1064,7 +1072,7 @@ export default function Reader() {
                     <motion.div 
                       key={book.book_id}
                       whileHover={{ scale: 1.02 }}
-                      className="bg-white p-4 rounded-2xl border border-surface-container-high flex gap-4 cursor-pointer"
+                      className="bg-white p-4 rounded-lg border border-surface-container-high flex gap-4 cursor-pointer"
                       onClick={() => {
                         setBookTitle(book.title);
                         setBookId(book.book_id);
@@ -1074,18 +1082,18 @@ export default function Reader() {
                         fetchBookContent(book.book_url);
                       }}
                     >
-                      <div className="w-16 h-20 bg-surface-container-low rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
+                      <div className="w-16 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 shadow-sm">
                         {book.cover_url ? (
                           <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-primary/5">
-                            <BookOpen className="w-6 h-6 text-primary/30" />
+                          <div className="w-full h-full flex items-center justify-center bg-red-600/5">
+                            <BookOpen className="w-6 h-6 text-red-600/30" />
                           </div>
                         )}
                       </div>
                       <div className="flex-1 flex flex-col justify-center overflow-hidden">
-                        <h4 className="font-bold text-on-surface line-clamp-1 mb-1">{book.title}</h4>
-                        <div className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                        <h4 className="font-bold text-gray-900 line-clamp-1 mb-1">{book.title}</h4>
+                        <div className="text-[10px] font-bold text-red-600 uppercase tracking-widest">
                           {Math.round((book.pages_read / (book.total_pages || 1)) * 100)}% Complete
                         </div>
                       </div>
@@ -1117,7 +1125,7 @@ export default function Reader() {
                   <div className="h-4 bg-stone-200 rounded w-4/5"></div>
                 </div>
                 <div className="pt-12 text-center">
-                  <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-4" />
+                  <Loader2 className="w-8 h-8 text-red-600 animate-spin mx-auto mb-4" />
                   <p className="text-sm font-bold text-stone-400 uppercase tracking-widest">Loading your book...</p>
                 </div>
               </div>
@@ -1133,13 +1141,13 @@ export default function Reader() {
             )}
             {bookTitle && (
               <div className="flex flex-col gap-6">
-                <div className="flex items-center justify-between pb-4 border-b border-surface-container-highest">
+                <div className="flex items-center justify-between pb-4 border-b border-gray-300">
                   <div className="flex items-center gap-3">
-                    <BookOpen className="w-6 h-6 text-primary" />
-                    <h3 className="font-headline text-xl font-bold text-on-surface line-clamp-1">{bookTitle}</h3>
+                    <BookOpen className="w-6 h-6 text-red-600" />
+                    <h3 className="font-headline text-xl font-bold text-gray-900 line-clamp-1">{bookTitle}</h3>
                   </div>
                   {pages.length > 0 && (
-                    <div className="bg-surface-container-low px-4 py-1.5 rounded-full text-sm font-bold text-primary border border-surface-container-high">
+                    <div className="bg-gray-100 px-4 py-1.5 rounded-full text-sm font-bold text-red-600 border border-surface-container-high">
                       Page {currentPage + 1} of {pages.length}
                     </div>
                   )}
@@ -1149,7 +1157,7 @@ export default function Reader() {
                   <button 
                     onClick={handleSimplify}
                     disabled={isSimplifying}
-                    className="flex-1 bg-primary/10 text-primary px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-primary/20 transition-all disabled:opacity-50"
+                    className="flex-1 bg-red-600/10 text-red-600 px-6 py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-red-600/20 transition-all disabled:opacity-50"
                   >
                     {isSimplifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
                     Simplify Page
@@ -1157,15 +1165,15 @@ export default function Reader() {
                   <button 
                     onClick={handleSummarize}
                     disabled={isSummarizing}
-                    className="flex-1 bg-primary/10 text-primary px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-primary/20 transition-all disabled:opacity-50"
+                    className="flex-1 bg-red-600/10 text-red-600 px-6 py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-red-600/20 transition-all disabled:opacity-50"
                   >
                     {isSummarizing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
                     Explain Main Idea
                   </button>
                   <button 
                     onClick={handleVoiceCommand}
-                    className={`flex-1 px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all relative ${
-                      isListening ? 'bg-error text-white animate-pulse' : 'bg-primary/10 text-primary hover:bg-surface-container-high'
+                    className={`flex-1 px-6 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all relative ${
+                      isListening ? 'bg-error text-white animate-pulse' : 'bg-red-600/10 text-red-600 hover:bg-gray-200'
                     }`}
                   >
                     <Mic className="w-4 h-4" />
@@ -1174,14 +1182,14 @@ export default function Reader() {
                   
                   {/* Voice command tooltip displayed above all buttons */}
                   {lastVoiceCommand && !isListening && (
-                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-primary text-white px-4 py-2 rounded-xl text-sm shadow-lg z-20 whitespace-nowrap">
+                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded-xl text-sm shadow-lg z-20 whitespace-nowrap">
                       Heard: "{lastVoiceCommand}"
                     </div>
                   )}
                 </div>
 
                 <div className="flex gap-4">
-                  <div className="flex items-center gap-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+                  <div className="flex items-center gap-2 text-xs font-bold text-gray-600 uppercase tracking-widest">
                     Persona:
                   </div>
                   {(['narrator', 'teacher', 'friend'] as const).map(p => (
@@ -1189,7 +1197,7 @@ export default function Reader() {
                       key={p}
                       onClick={() => setPersona(p)}
                       className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${
-                        persona === p ? 'bg-primary text-white border-primary' : 'bg-surface-container-low text-on-surface-variant border-surface-container-high'
+                        persona === p ? 'bg-red-600 text-white border-red-600' : 'bg-gray-100 text-gray-600 border-surface-container-high'
                       }`}
                     >
                       {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -1201,7 +1209,7 @@ export default function Reader() {
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-amber-50 p-6 rounded-3xl border border-amber-200 relative"
+                    className="bg-amber-50 p-6 rounded-xl border border-amber-200 relative"
                   >
                     <button 
                       onClick={() => setSummary(null)}
@@ -1210,9 +1218,9 @@ export default function Reader() {
                       <XCircle className="w-5 h-5" />
                     </button>
                     <div className="flex items-start gap-3">
-                      <Sparkles className="w-5 h-5 text-amber-500 mt-1" />
+                      <Lightbulb className="w-5 h-5 text-amber-500 mt-1" />
                       <div>
-                        <p className="font-bold text-amber-900 mb-1">Jumu Ai's Summary</p>
+                        <p className="font-bold text-amber-900 mb-1">Page Summary</p>
                         <p className="text-amber-800 leading-relaxed">{summary}</p>
                       </div>
                     </div>
@@ -1222,10 +1230,10 @@ export default function Reader() {
             )}
             
             <div className="relative group">
-              <div className="absolute -inset-8 bg-primary/5 rounded-3xl blur-3xl -z-10 opacity-50" />
+              <div className="absolute -inset-8 bg-red-600/5 rounded-xl blur-3xl -z-10 opacity-50" />
               <div 
                 className={`tracking-tight transition-all ${isChunked ? 'space-y-4' : ''} ${
-                  theme === 'dark' ? 'text-stone-300' : 'text-on-surface'
+                  theme === 'dark' ? 'text-stone-300' : 'text-gray-900'
                 }`}
                 style={{ 
                   fontSize: `${fontSize}px`,
@@ -1254,8 +1262,8 @@ export default function Reader() {
                       onClick={() => handleWordClick(word)}
                       className={`inline-block cursor-pointer rounded px-1 transition-all ${
                         isCurrent 
-                          ? 'bg-primary text-white shadow-lg scale-110' 
-                          : isBionic ? 'hover:bg-primary/5' : 'hover:bg-primary/10'
+                          ? 'bg-red-600 text-white shadow-lg scale-110' 
+                          : isBionic ? 'hover:bg-red-600/5' : 'hover:bg-red-600/10'
                       } ${isChunked && i % 5 === 0 ? 'mr-4' : 'mr-1.5'}`}
                     >
                       {renderBionic(word)}
@@ -1267,22 +1275,22 @@ export default function Reader() {
 
             {/* Pagination Actions */}
             {pages.length > 1 && (
-              <div className="flex justify-between items-center bg-white p-4 rounded-3xl border border-surface-container-highest shadow-sm mt-8">
+              <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-300 shadow-sm mt-8">
                 <button 
                   onClick={handlePrevPage}
                   disabled={currentPage === 0}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-primary disabled:opacity-30 hover:bg-primary/5 transition-all"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-red-600 disabled:opacity-30 hover:bg-red-600/5 transition-all"
                 >
                   <ChevronLeft className="w-5 h-5" />
                   Previous
                 </button>
-                <div className="text-sm font-bold text-on-surface-variant">
+                <div className="text-sm font-bold text-gray-600">
                   {currentPage + 1} / {pages.length}
                 </div>
                 <button 
                   onClick={handleNextPage}
                   disabled={currentPage === pages.length - 1}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold bg-primary text-white disabled:opacity-30 shadow-lg shadow-primary/10 active:scale-95 transition-all"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold bg-red-600 text-white disabled:opacity-30 active:scale-95 transition-all"
                 >
                   Next Page
                   <ChevronRight className="w-5 h-5" />
@@ -1294,7 +1302,7 @@ export default function Reader() {
             <div className="flex flex-wrap justify-center gap-4">
               <button 
                 onClick={() => setIsChunked(!isChunked)}
-                className={`px-8 py-4 rounded-full flex items-center gap-3 transition-all active:scale-95 ${isChunked ? 'bg-primary text-white' : 'bg-surface-container-low text-primary'}`}
+                className={`px-8 py-4 rounded-full flex items-center gap-3 transition-all active:scale-95 ${isChunked ? 'bg-red-600 text-white' : 'bg-gray-100 text-red-600'}`}
               >
                 <Wand2 className="w-5 h-5" />
                 <span className="font-headline font-semibold">{isChunked ? 'Unchunk text' : 'Chunk text'}</span>
@@ -1302,7 +1310,7 @@ export default function Reader() {
               <button 
                 onClick={generateQuiz}
                 disabled={!text || text.length < 50}
-                className="bg-primary/10 text-primary px-8 py-4 rounded-full flex items-center gap-3 hover:bg-primary/20 transition-all active:scale-95 disabled:opacity-50"
+                className="bg-red-600/10 text-red-600 px-8 py-4 rounded-full flex items-center gap-3 hover:bg-red-600/20 transition-all active:scale-95 disabled:opacity-50"
               >
                 <Brain className="w-5 h-5" />
                 <span className="font-headline font-semibold">Check Understanding</span>
@@ -1314,7 +1322,7 @@ export default function Reader() {
                   setCurrentWordIndex(-1);
                   window.speechSynthesis.cancel();
                 }}
-                className="bg-surface-container-low text-on-surface-variant px-8 py-4 rounded-full flex items-center gap-3 hover:bg-surface-container-high transition-colors active:scale-95"
+                className="bg-gray-100 text-gray-600 px-8 py-4 rounded-full flex items-center gap-3 hover:bg-gray-200 transition-colors active:scale-95"
               >
                 Clear
               </button>
@@ -1325,212 +1333,30 @@ export default function Reader() {
     )}
 
     {/* Quiz Modal */}
-        <AnimatePresence>
-          {showQuiz && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center p-6"
-            >
-              <motion.div 
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden"
-              >
-                <div className="p-8">
-                  <div className="flex justify-between items-center mb-8">
-                    <h3 className="font-headline text-2xl font-bold text-primary flex items-center gap-3">
-                      <Brain className="w-6 h-6" />
-                      Understanding Check
-                    </h3>
-                    <button 
-                      onClick={() => setShowQuiz(false)}
-                      className="p-2 hover:bg-surface-container-high rounded-full transition-colors"
-                    >
-                      <XCircle className="w-6 h-6 text-stone-400" />
-                    </button>
-                  </div>
-
-                  {isGeneratingQuiz ? (
-                    <div className="py-20 text-center">
-                      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-6" />
-                      <p className="font-headline font-bold text-primary">Creating your quiz...</p>
-                    </div>
-                  ) : quizFinished ? (
-                    <div className="text-center py-12">
-                      <div className="w-20 h-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
-                        <CheckCircle2 className="w-10 h-10" />
-                      </div>
-                      <h4 className="text-3xl font-headline font-bold mb-2">
-                        {quizScore === quizQuestions.length ? 'Perfect Score!' : quizScore >= quizQuestions.length / 2 ? 'Great Job!' : 'Keep Practicing!'}
-                      </h4>
-                      <p className="text-on-surface-variant text-lg mb-2">You scored {quizScore} out of {quizQuestions.length}</p>
-                      <p className="text-primary font-medium mb-8">
-                        {quizScore === quizQuestions.length 
-                          ? "Excellent! You understood everything perfectly." 
-                          : quizScore >= quizQuestions.length / 2 
-                            ? "Good job! You have a solid grasp of the material."
-                            : "Keep going! Re-reading the text might help clarify some parts."}
-                      </p>
-                      <button 
-                        onClick={() => setShowQuiz(false)}
-                        className="bg-primary text-white px-10 py-4 rounded-xl font-bold shadow-lg active:scale-95 transition-all"
-                      >
-                        Back to Reading
-                      </button>
-                    </div>
-                  ) : quizQuestions.length > 0 ? (
-                    <div>
-                      <div className="mb-8">
-                        <div className="flex justify-between text-xs font-bold text-stone-400 uppercase tracking-widest mb-2">
-                          <span>Question {currentQuestionIndex + 1} of {quizQuestions.length}</span>
-                          <span>Score: {quizScore}</span>
-                        </div>
-                        <div className="h-2 bg-surface-container-high rounded-full overflow-hidden">
-                          <motion.div 
-                            className="h-full bg-primary"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${((currentQuestionIndex + 1) / quizQuestions.length) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <h4 className="text-2xl font-medium text-on-surface mb-8 leading-relaxed">
-                        {quizQuestions[currentQuestionIndex].question}
-                      </h4>
-
-                      <div className="grid grid-cols-1 gap-3 mb-8">
-                        {quizQuestions[currentQuestionIndex].options.map((option, i) => (
-                          <button 
-                            key={i}
-                            onClick={() => handleAnswer(i)}
-                            disabled={selectedOption !== null}
-                            className={`p-6 rounded-2xl border-2 text-left font-medium transition-all ${
-                              selectedOption === i 
-                                ? i === quizQuestions[currentQuestionIndex].correctAnswer 
-                                  ? 'bg-emerald-50 border-emerald-500 text-emerald-700' 
-                                  : 'bg-error/5 border-error text-error'
-                                : selectedOption !== null && i === quizQuestions[currentQuestionIndex].correctAnswer
-                                  ? 'bg-emerald-50 border-emerald-500 text-emerald-700'
-                                  : 'bg-surface-container-low border-transparent hover:border-surface-container-highest'
-                            }`}
-                          >
-                            <div className="flex justify-between items-center">
-                              <span>{option}</span>
-                              {selectedOption !== null && i === quizQuestions[currentQuestionIndex].correctAnswer && (
-                                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                              )}
-                              {selectedOption === i && i !== quizQuestions[currentQuestionIndex].correctAnswer && (
-                                <XCircle className="w-5 h-5 text-error" />
-                              )}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-
-                      {showExplanation && (
-                        <motion.div 
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`p-6 rounded-2xl mb-8 ${
-                            selectedOption === quizQuestions[currentQuestionIndex].correctAnswer 
-                              ? 'bg-emerald-50 text-emerald-800' 
-                              : 'bg-amber-50 text-amber-800'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <Info className="w-5 h-5 mt-0.5" />
-                            <p className="font-medium">{quizQuestions[currentQuestionIndex].explanation}</p>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {selectedOption !== null && (
-                        <button 
-                          onClick={nextQuestion}
-                          className="w-full bg-primary text-white py-4 rounded-xl font-bold shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
-                        >
-                          {currentQuestionIndex < quizQuestions.length - 1 ? 'Next Question' : 'See Results'}
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <p className="text-on-surface-variant">Something went wrong. Please try again.</p>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <ReaderQuiz
+          showQuiz={showQuiz}
+          isGeneratingQuiz={isGeneratingQuiz}
+          quizQuestions={quizQuestions}
+          currentQuestionIndex={currentQuestionIndex}
+          quizScore={quizScore}
+          quizFinished={quizFinished}
+          selectedOption={selectedOption}
+          showExplanation={showExplanation}
+          onClose={() => setShowQuiz(false)}
+          onAnswer={handleAnswer}
+          onNext={nextQuestion}
+        />
 
         {/* Word Definition Modal */}
-        <AnimatePresence>
-          {selectedWord && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed inset-0 z-[100] flex items-center justify-center px-6 bg-black/20 backdrop-blur-sm"
-              onClick={() => setSelectedWord(null)}
-            >
-              <div 
-                className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl"
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="flex items-center gap-3 mb-4 text-primary">
-                  <Info className="w-6 h-6" />
-                  <h3 className="text-2xl font-headline font-bold capitalize">{selectedWord}</h3>
-                </div>
-                <p className="text-on-surface-variant text-lg leading-relaxed mb-8">
-                  {isDefining ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Finding definition...
-                    </span>
-                  ) : wordDefinition ? (
-                    wordDefinition
-                  ) : (
-                    "Loading definition..."
-                  )}
-                </p>
-                <div className="flex flex-col gap-3">
-                  <button 
-                    onClick={handleSaveToGlossary}
-                    disabled={isSavingWord || wordSaved || isDefining || !wordDefinition}
-                    className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
-                      wordSaved 
-                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
-                        : 'bg-primary/10 text-primary hover:bg-primary/20'
-                    } disabled:opacity-50`}
-                  >
-                    {isSavingWord ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : wordSaved ? (
-                      <>
-                        <CheckCircle2 className="w-5 h-5" />
-                        Saved to Glossary
-                      </>
-                    ) : (
-                      <>
-                        <BookMarked className="w-5 h-5" />
-                        Add to Glossary
-                      </>
-                    )}
-                  </button>
-                  <button 
-                    onClick={() => setSelectedWord(null)}
-                    className="w-full bg-primary text-white py-4 rounded-xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
-                  >
-                    Got it
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <WordDefinitionModal
+          selectedWord={selectedWord}
+          isDefining={isDefining}
+          wordDefinition={wordDefinition}
+          isSavingWord={isSavingWord}
+          wordSaved={wordSaved}
+          onClose={() => setSelectedWord(null)}
+          onSave={handleSaveToGlossary}
+        />
 
         {/* Accessibility Controls Overlay */}
         <div className="fixed bottom-0 left-0 w-full z-[100] px-4 pb-8 pointer-events-none">
@@ -1541,27 +1367,27 @@ export default function Reader() {
                   initial={{ y: 100, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: 100, opacity: 0 }}
-                  className="bg-surface/90 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl border border-surface-container-highest/30 relative"
+                  className="bg-white/90 backdrop-blur-2xl rounded-xl p-6 shadow-2xl border border-gray-300/30 relative"
                 >
                   <button 
                     onClick={() => setIsControlsExpanded(false)}
-                    className="absolute -top-4 left-1/2 -translate-x-1/2 bg-surface border border-surface-container-highest rounded-full p-2 shadow-lg hover:bg-surface-container-high transition-colors"
+                    className="absolute -top-4 left-1/2 -translate-x-1/2 bg-white border border-gray-300 rounded-full p-2 shadow-lg hover:bg-gray-200 transition-colors"
                   >
                     <ChevronRight className="w-5 h-5 rotate-90" />
                   </button>
 
-                  <div className="flex items-center justify-between mb-6 pb-6 border-b border-surface-container-highest">
+                  <div className="flex items-center justify-between mb-6 pb-6 border-b border-gray-300">
                     <div className="flex items-center gap-4">
                       <button 
                         onClick={handlePlayPause}
                         disabled={voiceMode === 'gemini' && isTtsLoading}
-                        className="w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all disabled:opacity-50"
+                        className="w-14 h-14 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all disabled:opacity-50"
                       >
                         {isTtsLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : isReading ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />}
                       </button>
                       <div>
-                        <div className="font-bold text-on-surface leading-tight">Reading Aloud</div>
-                        <div className="text-[10px] text-on-surface-variant uppercase tracking-widest font-black">
+                        <div className="font-bold text-gray-900 leading-tight">Reading Aloud</div>
+                        <div className="text-[10px] text-gray-600 uppercase tracking-widest font-black">
                           {voiceMode === 'streaming' ? 'Streaming Voice' : 'Natural Voice'}
                         </div>
                       </div>
@@ -1572,14 +1398,14 @@ export default function Reader() {
                         <input 
                           type="range" min="0.5" max="2" step="0.1" value={pitch}
                           onChange={e => setPitch(Number(e.target.value))}
-                          className="w-20 h-1 bg-surface-container-high rounded-lg appearance-none cursor-pointer accent-primary"
+                          className="w-20 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
                         <label className="text-[10px] uppercase tracking-widest font-bold text-stone-500">Speed</label>
-                        <div className="flex items-center gap-2 bg-surface-container-low px-3 py-1 rounded-full">
+                        <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full">
                           <button onClick={() => setSpeed(s => Math.max(0.5, s - 0.25))}><Minus className="w-3 h-3" /></button>
-                          <span className="text-xs font-bold text-primary w-8 text-center">{speed}x</span>
+                          <span className="text-xs font-bold text-red-600 w-8 text-center">{speed}x</span>
                           <button onClick={() => setSpeed(s => Math.min(2, s + 0.25))}><Plus className="w-3 h-3" /></button>
                         </div>
                       </div>
@@ -1595,7 +1421,7 @@ export default function Reader() {
                             key={t}
                             onClick={() => setTheme(t)}
                             className={`h-8 w-8 rounded-full border-2 transition-all ${
-                              theme === t ? 'border-primary scale-110' : 'border-transparent'
+                              theme === t ? 'border-red-600 scale-110' : 'border-transparent'
                             } ${
                               t === 'light' ? 'bg-white' : 
                               t === 'cream' ? 'bg-[#fcf8ef]' : 
@@ -1613,7 +1439,7 @@ export default function Reader() {
                         <button 
                           onClick={() => setIsLineFocus(!isLineFocus)}
                           className={`w-full py-2 text-[10px] font-bold rounded-xl border flex items-center justify-center gap-2 transition-all ${
-                            isLineFocus ? 'bg-primary text-white border-primary' : 'bg-white text-stone-500 border-surface-container-highest hover:bg-surface-container-high'
+                            isLineFocus ? 'bg-red-600 text-white border-red-600' : 'bg-white text-stone-500 border-gray-300 hover:bg-gray-200'
                           }`}
                         >
                           {isLineFocus ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
@@ -1628,7 +1454,7 @@ export default function Reader() {
                         <button 
                           onClick={() => setIsChunked(!isChunked)}
                           className={`w-full py-2 text-[10px] font-bold rounded-xl border flex items-center justify-center gap-2 transition-all ${
-                            isChunked ? 'bg-primary text-white border-primary' : 'bg-white text-stone-500 border-surface-container-highest hover:bg-surface-container-high'
+                            isChunked ? 'bg-red-600 text-white border-red-600' : 'bg-white text-stone-500 border-gray-300 hover:bg-gray-200'
                           }`}
                         >
                           <Wand2 className="w-3 h-3" />
@@ -1637,10 +1463,10 @@ export default function Reader() {
                         <button 
                           onClick={() => setIsBionic(!isBionic)}
                           className={`w-full py-2 text-[10px] font-bold rounded-xl border flex items-center justify-center gap-2 transition-all ${
-                            isBionic ? 'bg-primary text-white border-primary' : 'bg-white text-stone-500 border-surface-container-highest hover:bg-surface-container-high'
+                            isBionic ? 'bg-red-600 text-white border-red-600' : 'bg-white text-stone-500 border-gray-300 hover:bg-gray-200'
                           }`}
                         >
-                          <Sparkles className="w-3 h-3" />
+                          <Lightbulb className="w-3 h-3" />
                           Bionic
                         </button>
                       </div>
@@ -1651,11 +1477,11 @@ export default function Reader() {
                       <div className="flex flex-col gap-2">
                         <button 
                           onClick={() => setIsDyslexic(!isDyslexic)}
-                          className={`w-full py-2 text-[10px] font-bold rounded-xl border ${isDyslexic ? 'bg-primary text-white border-primary' : 'bg-white text-stone-500 border-surface-container-highest'}`}
+                          className={`w-full py-2 text-[10px] font-bold rounded-xl border ${isDyslexic ? 'bg-red-600 text-white border-red-600' : 'bg-white text-stone-500 border-gray-300'}`}
                         >
                           Dyslexic
                         </button>
-                        <div className="flex items-center gap-3 bg-surface-container-low px-3 h-8 rounded-xl w-full">
+                        <div className="flex items-center gap-3 bg-gray-100 px-3 h-8 rounded-xl w-full">
                           <button onClick={() => setFontSize(s => Math.max(12, s - 2))}><Minus className="w-3 h-3 text-stone-500" /></button>
                           <span className="text-[10px] font-bold flex-1 text-center">{fontSize}</span>
                           <button onClick={() => setFontSize(s => Math.min(72, s + 2))}><Plus className="w-3 h-3 text-stone-500" /></button>
@@ -1670,8 +1496,8 @@ export default function Reader() {
                           onClick={() => setVoiceMode('streaming')}
                           className={`flex-1 h-10 rounded-xl text-[10px] font-bold border transition-all ${
                             voiceMode === 'streaming'
-                              ? 'bg-primary text-white border-primary'
-                              : 'bg-white text-stone-500 border-surface-container-highest'
+                              ? 'bg-red-600 text-white border-red-600'
+                              : 'bg-white text-stone-500 border-gray-300'
                           }`}
                         >
                           Stream
@@ -1680,16 +1506,16 @@ export default function Reader() {
                           onClick={() => setVoiceMode('gemini')}
                           className={`flex-1 h-10 rounded-xl text-[10px] font-bold border transition-all ${
                             voiceMode === 'gemini'
-                              ? 'bg-primary text-white border-primary'
-                              : 'bg-white text-stone-500 border-surface-container-highest'
+                              ? 'bg-red-600 text-white border-red-600'
+                              : 'bg-white text-stone-500 border-gray-300'
                           }`}
                         >
                           Gemini
                         </button>
                       </div>
-                      <button className="w-full flex items-center justify-between bg-surface-container-low px-4 h-10 rounded-xl text-[10px] font-bold">
+                      <button className="w-full flex items-center justify-between bg-gray-100 px-4 h-10 rounded-xl text-[10px] font-bold">
                         <span className="capitalize">{language === 'en' ? 'English' : language === 'sw' ? 'Swahili' : 'Spanish'}</span>
-                        <Volume2 className="w-4 h-4 text-primary" />
+                        <Volume2 className="w-4 h-4 text-red-600" />
                       </button>
                     </div>
                   </div>
@@ -1703,7 +1529,7 @@ export default function Reader() {
                 >
                   <button 
                     onClick={() => setIsControlsExpanded(true)}
-                    className="bg-primary text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 font-headline font-bold active:scale-95 transition-all"
+                    className="bg-red-600 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 font-headline font-bold active:scale-95 transition-all"
                   >
                     <BookMarked className="w-5 h-5" />
                     Reader Settings

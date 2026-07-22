@@ -36,6 +36,10 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
       - name: Fix base paths for GitHub Pages
         working-directory: frontend
         run: |

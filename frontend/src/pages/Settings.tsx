@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { Layout } from '@/components/Layout';
-import { Palette, Type, Mic, Check, X, Sun, Moon, Droplets, Leaf, Sparkles, Heart, MessageCircle, Languages, Volume2 } from 'lucide-react';
+import { Palette, Type, Mic, Check, X, Sun, Moon, Droplets, Leaf, Heart, MessageCircle, Languages, Volume2, Smile } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/lib/AppContext';
@@ -46,7 +46,7 @@ export default function Settings() {
         <h1 className="text-primary font-headline font-extrabold text-2xl tracking-tight">Jumu Ai</h1>
         <button 
           onClick={() => navigate(-1)}
-          className="p-2 text-stone-500 hover:bg-surface-container-high rounded-full transition-colors"
+          className="p-2 text-stone-500 hover:bg-gray-200 rounded-full transition-colors"
         >
           <X className="w-6 h-6" />
         </button>
@@ -57,14 +57,14 @@ export default function Settings() {
           <div className="flex items-center gap-3 mb-4">
             <div className="h-1 w-12 bg-primary rounded-full" />
             <div className="h-1 w-12 bg-primary rounded-full" />
-            <div className="h-1 w-12 bg-surface-container-highest rounded-full" />
-            <div className="h-1 w-12 bg-surface-container-highest rounded-full" />
+            <div className="h-1 w-12 bg-gray-200 rounded-full" />
+            <div className="h-1 w-12 bg-gray-200 rounded-full" />
           </div>
-          <h2 className="font-headline font-bold text-4xl md:text-5xl text-on-surface mb-4 tracking-tight">
+          <h2 className="font-headline font-bold text-4xl md:text-5xl text-gray-900 mb-4 tracking-tight">
             Customize your experience.
           </h2>
-          <p className="text-on-surface-variant text-lg max-w-xl leading-relaxed">
-            Let's make Jumu Ai feel like your personal Cognitive Sanctuary. Choose the settings that help you focus best.
+          <p className="text-gray-600 text-lg max-w-xl leading-relaxed">
+            Customize the app to work best for you. Choose the settings that help you focus.
           </p>
         </div>
 
@@ -72,24 +72,24 @@ export default function Settings() {
           {/* Theme Section */}
           <section>
             <div className="flex items-center gap-3 mb-6">
-              <Palette className="w-6 h-6 text-primary" />
+              <Palette className="w-6 h-6 text-red-600" />
               <h3 className="font-headline font-semibold text-xl">Theme</h3>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { id: 'light', label: 'Light', icon: Sun, bg: 'bg-surface', color: 'text-stone-400' },
+                { id: 'light', label: 'Light', icon: Sun, bg: 'bg-white', color: 'text-stone-400' },
                 { id: 'dark', label: 'Dark', icon: Moon, bg: 'bg-stone-900', color: 'text-stone-500' },
-                { id: 'blue', label: 'Blue', icon: Droplets, bg: 'bg-[#eef6ff]', color: 'text-primary' },
+                { id: 'blue', label: 'Blue', icon: Droplets, bg: 'bg-[#eef6ff]', color: 'text-red-600' },
                 { id: 'green', label: 'Green', icon: Leaf, bg: 'bg-[#f2f8f2]', color: 'text-emerald-600' },
               ].map((item) => (
                 <button 
                   key={item.id}
                   onClick={() => setTheme(item.id)}
                   className={`flex flex-col items-center gap-3 p-6 rounded-xl transition-all border-2 ${
-                    theme === item.id ? 'bg-white border-primary ring-4 ring-primary/10' : 'bg-surface-container-low border-transparent hover:border-surface-container-highest'
+                    theme === item.id ? 'bg-white border-primary ring-4 ring-primary/10' : 'bg-gray-100 border-transparent hover:border-gray-300'
                   }`}
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${item.bg} border border-surface-container-highest`}>
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${item.bg} border border-gray-300`}>
                     <item.icon className={`w-6 h-6 ${item.color}`} />
                   </div>
                   <span className="font-medium text-sm">{item.label}</span>
@@ -101,7 +101,7 @@ export default function Settings() {
           {/* Font Section */}
           <section>
             <div className="flex items-center gap-3 mb-6">
-              <Type className="w-6 h-6 text-primary" />
+              <Type className="w-6 h-6 text-red-600" />
               <h3 className="font-headline font-semibold text-xl">Reading Font</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -113,20 +113,20 @@ export default function Settings() {
                   key={item.id}
                   onClick={() => setFont(item.id)}
                   className={`flex items-center justify-between p-8 rounded-xl transition-all border-2 text-left ${
-                    font === item.id ? 'bg-white border-primary ring-4 ring-primary/10' : 'bg-surface-container-low border-transparent hover:border-surface-container-highest'
+                    font === item.id ? 'bg-white border-primary ring-4 ring-primary/10' : 'bg-gray-100 border-transparent hover:border-gray-300'
                   }`}
                 >
                   <div>
                     <span className={`block text-2xl mb-1 ${item.style}`}>{item.label}</span>
-                    <span className="text-on-surface-variant text-sm">{item.sub}</span>
+                    <span className="text-gray-600 text-sm">{item.sub}</span>
                   </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${font === item.id ? 'border-primary' : 'border-surface-container-highest'}`}>
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${font === item.id ? 'border-primary' : 'border-gray-300'}`}>
                     {font === item.id && <div className="w-3 h-3 bg-primary rounded-full" />}
                   </div>
                 </button>
               ))}
             </div>
-            <div className="mt-4 p-6 bg-surface-container rounded-lg italic text-on-surface-variant">
+            <div className="mt-4 p-6 bg-white-container rounded-lg italic text-gray-600">
               "The quick brown fox jumps over the lazy dog. Reading should be effortless and clear for everyone."
             </div>
           </section>
@@ -134,7 +134,7 @@ export default function Settings() {
           {/* Language Section */}
           <section>
             <div className="flex items-center gap-3 mb-6">
-              <Languages className="w-6 h-6 text-primary" />
+              <Languages className="w-6 h-6 text-red-600" />
               <h3 className="font-headline font-semibold text-xl">Language</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -147,7 +147,7 @@ export default function Settings() {
                   key={lang.id}
                   onClick={() => setLanguage(lang.id as Language)}
                   className={`p-6 rounded-xl transition-all border-2 text-center font-bold ${
-                    language === lang.id ? 'bg-white border-primary ring-4 ring-primary/10 text-primary' : 'bg-surface-container-low border-transparent hover:border-surface-container-highest'
+                    language === lang.id ? 'bg-white border-primary ring-4 ring-primary/10 text-primary' : 'bg-gray-100 border-transparent hover:border-gray-300'
                   }`}
                 >
                   {lang.label}
@@ -159,7 +159,7 @@ export default function Settings() {
           {/* Voice Section */}
           <section>
             <div className="flex items-center gap-3 mb-6">
-              <Volume2 className="w-6 h-6 text-primary" />
+              <Volume2 className="w-6 h-6 text-red-600" />
               <h3 className="font-headline font-semibold text-xl">Voice Selection</h3>
             </div>
             <div className="space-y-3">
@@ -171,12 +171,12 @@ export default function Settings() {
                   key={v.id}
                   onClick={() => setVoice(v.id)}
                   className={`w-full flex items-center justify-between p-6 rounded-xl transition-all border-2 ${
-                    voice === v.id ? 'bg-white border-primary ring-4 ring-primary/10' : 'bg-surface-container-low border-transparent hover:border-surface-container-highest'
+                    voice === v.id ? 'bg-white border-primary ring-4 ring-primary/10' : 'bg-gray-100 border-transparent hover:border-gray-300'
                   }`}
                 >
                   <div className="text-left">
                     <div className="font-bold">{v.label}</div>
-                    <div className="text-xs text-on-surface-variant">{v.desc}</div>
+                    <div className="text-xs text-gray-600">{v.desc}</div>
                   </div>
                   {voice === v.id && <Check className="w-6 h-6 text-primary" />}
                 </button>
@@ -187,12 +187,12 @@ export default function Settings() {
           {/* Tone Section */}
           <section>
             <div className="flex items-center gap-3 mb-6">
-              <Mic className="w-6 h-6 text-primary" />
+              <Mic className="w-6 h-6 text-red-600" />
               <h3 className="font-headline font-semibold text-xl">Tone</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { id: 'encouraging', label: 'Encouraging', sub: 'Motivating and supportive', icon: Sparkles },
+                { id: 'encouraging', label: 'Encouraging', sub: 'Motivating and supportive', icon: Smile },
                 { id: 'calm', label: 'Calm', sub: 'Minimal and peaceful', icon: Heart },
                 { id: 'friendly', label: 'Friendly', sub: 'Warm and conversational', icon: MessageCircle },
               ].map((item) => (
@@ -200,12 +200,12 @@ export default function Settings() {
                   key={item.id}
                   onClick={() => setTone(item.id)}
                   className={`p-6 rounded-xl transition-all border-2 text-center ${
-                    tone === item.id ? 'bg-white border-primary ring-4 ring-primary/10' : 'bg-surface-container-low border-transparent hover:border-surface-container-highest'
+                    tone === item.id ? 'bg-white border-primary ring-4 ring-primary/10' : 'bg-gray-100 border-transparent hover:border-gray-300'
                   }`}
                 >
                   <item.icon className="w-8 h-8 mx-auto mb-3 text-primary" />
                   <h4 className="font-bold mb-1">{item.label}</h4>
-                  <p className="text-xs text-on-surface-variant">{item.sub}</p>
+                  <p className="text-xs text-gray-600">{item.sub}</p>
                 </button>
               ))}
             </div>
@@ -213,17 +213,17 @@ export default function Settings() {
         </div>
 
         {/* Footer Actions */}
-        <div className="fixed bottom-0 left-0 w-full bg-surface/80 backdrop-blur-xl px-6 py-6 border-t border-surface-container-highest">
+        <div className="fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-xl px-6 py-6 border-t border-gray-300">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <button 
               onClick={() => navigate(-1)}
-              className="text-primary font-headline font-semibold px-6 py-4 hover:bg-surface-container-low rounded-full transition-colors"
+              className="text-primary font-headline font-semibold px-6 py-4 hover:bg-gray-100 rounded-full transition-colors"
             >
               {t('back')}
             </button>
             <button 
               onClick={() => navigate('/dashboard')}
-              className="bg-gradient-to-br from-primary to-primary-container text-white font-headline font-bold px-10 py-4 rounded-full shadow-lg active:scale-95 transition-all"
+              className="bg-primary text-white font-headline font-bold px-10 py-4 rounded-full hover:bg-primary/90 active:scale-95 transition-all"
             >
               {t('continue')}
             </button>

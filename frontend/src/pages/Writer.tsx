@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Layout } from '@/components/Layout';
 import { 
-  Sparkles, 
   PenTool, 
   BookOpen, 
   Wand2, 
@@ -129,8 +128,8 @@ export default function Writer() {
   return (
     <Layout>
       <SEO
-        title="AI Story Maker — Jumu AI"
-        description="Transform your wild ideas into beautiful stories with the Jumu AI Story Maker. Let AI guide your creative writing journey with genre-specific templates."
+        title="Story Maker — Jumu AI"
+        description="Create your own stories with help from writing prompts and genre templates. Build creative writing skills through guided storytelling."
         canonical="https://jumu.ai/writer"
         ogType="website"
       />
@@ -141,12 +140,12 @@ export default function Writer() {
           className="mb-12"
         >
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+            <div className="w-12 h-12 bg-red-600/10 rounded-lg flex items-center justify-center text-red-600">
               <PenTool className="w-6 h-6" />
             </div>
-            <h2 className="font-headline text-4xl font-extrabold text-on-surface">Story Maker</h2>
+            <h2 className="font-headline text-4xl font-extrabold text-gray-900">Story Maker</h2>
           </div>
-          <p className="text-on-surface-variant text-lg">Use the power of AI to write your own unique adventures together.</p>
+          <p className="text-gray-600 text-lg">Create your own stories with guided writing prompts and templates.</p>
         </motion.section>
 
         <AnimatePresence mode="wait">
@@ -156,7 +155,7 @@ export default function Writer() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="bg-white rounded-[40px] p-10 border-2 border-surface-container-highest shadow-sm"
+              className="bg-white rounded-[40px] p-10 border-2 border-gray-300 shadow-sm"
             >
               <h3 className="font-headline text-2xl font-bold mb-8">What should your story be about?</h3>
               <div className="space-y-6">
@@ -166,7 +165,7 @@ export default function Writer() {
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
                     placeholder="Example: A friendly robot who learns to bake cookies..."
-                    className="w-full bg-surface-container-low border-none rounded-3xl p-6 pl-16 text-xl min-h-[150px] focus:ring-2 ring-primary/20 transition-all font-medium"
+                    className="w-full bg-gray-100 border-none rounded-xl p-6 pl-16 text-xl min-h-[150px] focus:ring-2 ring-red-600/20 transition-all font-medium"
                   />
                 </div>
                 
@@ -175,13 +174,13 @@ export default function Writer() {
                     <button
                       key={genre.id}
                       onClick={() => setSelectedGenre(genre.id)}
-                      className={`p-6 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 group ${
+                      className={`p-6 rounded-lg border-2 transition-all flex flex-col items-center gap-3 group ${
                         selectedGenre === genre.id 
                           ? `${genre.color} border-transparent text-white shadow-xl scale-105` 
-                          : 'bg-white border-surface-container-highest text-on-surface hover:border-primary/20'
+                          : 'bg-white border-gray-300 text-gray-900 hover:border-red-600/20'
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selectedGenre === genre.id ? 'bg-white/20' : 'bg-surface-container-low text-stone-400 group-hover:text-primary'}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selectedGenre === genre.id ? 'bg-white/20' : 'bg-gray-100 text-stone-400 group-hover:text-red-600'}`}>
                         {genre.icon}
                       </div>
                       <span className="font-bold text-sm">{genre.name}</span>
@@ -194,7 +193,7 @@ export default function Writer() {
                     <button 
                       onClick={() => setStep(2)}
                       disabled={!topic || !selectedGenre}
-                      className="bg-primary text-white px-10 py-5 rounded-2xl font-bold flex items-center gap-3 shadow-xl shadow-primary/25 disabled:opacity-30 transition-all"
+                      className="bg-red-600 text-white px-10 py-5 rounded-lg font-bold flex items-center gap-3 shadow-xl shadow-red-600/25 disabled:opacity-30 transition-all"
                     >
                       Next Step
                       <ChevronRight className="w-6 h-6" />
@@ -209,26 +208,26 @@ export default function Writer() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="bg-white rounded-[40px] p-12 text-center border-2 border-surface-container-highest shadow-sm"
+                className="bg-white rounded-[40px] p-12 text-center border-2 border-gray-300 shadow-sm"
               >
-                <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-8">
-                  <Sparkles className="w-12 h-12 text-primary animate-pulse" />
+                <div className="w-24 h-24 bg-red-600/10 rounded-full flex items-center justify-center mx-auto mb-8">
+                  <PenTool className="w-12 h-12 text-red-600" />
                 </div>
                 <h3 className="font-headline text-3xl font-bold mb-4">Ready to create?</h3>
-                <p className="text-on-surface-variant max-w-sm mx-auto mb-10 text-lg">
+                <p className="text-gray-600 max-w-sm mx-auto mb-10 text-lg">
                   I'll use your ideas to write a special story just for you.
                 </p>
                 <div className="flex gap-4 justify-center">
                   <button 
                     onClick={() => setStep(1)}
-                    className="px-8 py-5 rounded-2xl font-bold text-on-surface-variant hover:bg-surface-container-low transition-all"
+                    className="px-8 py-5 rounded-lg font-bold text-gray-600 hover:bg-gray-100 transition-all"
                   >
                     Change Idea
                   </button>
                   <TapEffect>
                     <button 
                       onClick={generateStory}
-                      className="bg-primary text-white px-10 py-5 rounded-2xl font-bold flex items-center gap-3 shadow-xl"
+                      className="bg-red-600 text-white px-10 py-5 rounded-lg font-bold flex items-center gap-3 shadow-xl"
                     >
                       <Wand2 className="w-6 h-6" />
                       Create Story
@@ -244,30 +243,30 @@ export default function Writer() {
               className="space-y-8"
             >
               {isGenerating ? (
-                <div className="bg-white rounded-[40px] p-20 text-center border-2 border-surface-container-highest shadow-sm">
+                <div className="bg-white rounded-[40px] p-20 text-center border-2 border-gray-300 shadow-sm">
                   <div className="relative w-24 h-24 mx-auto mb-8">
-                    <div className="w-full h-full border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                    <Sparkles className="w-8 h-8 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                    <div className="w-full h-full border-4 border-red-600/20 border-t-red-600 rounded-full animate-spin" />
+                    <PenTool className="w-8 h-8 text-red-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
                   </div>
-                  <h3 className="font-headline text-2xl font-bold text-primary mb-2">Writing your adventure...</h3>
-                  <p className="text-on-surface-variant italic">Magic takes a moment.</p>
+                  <h3 className="font-headline text-2xl font-bold text-red-600 mb-2">Writing your story...</h3>
+                  <p className="text-gray-600 italic">This may take a moment.</p>
                 </div>
               ) : (
                 <>
-                  <div className="bg-white rounded-[40px] p-10 border-2 border-surface-container-highest shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+                  <div className="bg-white rounded-[40px] p-10 border-2 border-gray-300 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-red-600/5 rounded-full -mr-32 -mt-32 blur-3xl" />
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-8">
-                        <span className="px-4 py-2 bg-primary/10 text-primary rounded-full text-xs font-black uppercase tracking-widest">Your New Story</span>
+                        <span className="px-4 py-2 bg-red-600/10 text-red-600 rounded-full text-xs font-black uppercase tracking-widest">Your New Story</span>
                         <div className="flex gap-2">
-                           <button onClick={() => setStep(1)} className="p-3 bg-surface-container-low hover:bg-stone-200 rounded-xl transition-all">
+                           <button onClick={() => setStep(1)} className="p-3 bg-gray-100 hover:bg-stone-200 rounded-xl transition-all">
                              <RotateCcw className="w-5 h-5 text-stone-500" />
                            </button>
                         </div>
                       </div>
-                      <h3 className="font-headline text-4xl font-black text-on-surface mb-8 tracking-tight leading-tight">{title}</h3>
-                      <div className="bg-surface-container-lowest p-8 rounded-[32px] border border-surface-container-high prose max-w-none">
-                        <p className="text-xl font-medium text-on-surface-variant leading-relaxed whitespace-pre-wrap">
+                      <h3 className="font-headline text-4xl font-black text-gray-900 mb-8 tracking-tight leading-tight">{title}</h3>
+                      <div className="bg-gray-50 p-8 rounded-[32px] border border-gray-300 prose max-w-none">
+                        <p className="text-xl font-medium text-gray-600 leading-relaxed whitespace-pre-wrap">
                           {story}
                         </p>
                       </div>
@@ -279,7 +278,7 @@ export default function Writer() {
                       <button 
                         onClick={saveStory}
                         disabled={isSaving}
-                        className="w-full bg-primary text-white py-6 rounded-[32px] font-headline text-xl font-bold flex items-center justify-center gap-3 shadow-2xl shadow-primary/30 active:scale-95 transition-all"
+                        className="w-full bg-red-600 text-white py-6 rounded-[32px] font-headline text-xl font-bold flex items-center justify-center gap-3 shadow-2xl shadow-red-600/30 active:scale-95 transition-all"
                       >
                         {isSaving ? <Loader2 className="w-6 h-6 animate-spin" /> : <BookOpen className="w-6 h-6" />}
                         Open in Reader
@@ -287,7 +286,7 @@ export default function Writer() {
                     </TapEffect>
                     <button 
                       onClick={() => setStep(1)}
-                      className="px-10 py-6 rounded-[32px] font-headline text-xl font-bold border-2 border-surface-container-highest hover:bg-surface-container-low transition-all"
+                      className="px-10 py-6 rounded-[32px] font-headline text-xl font-bold border-2 border-gray-300 hover:bg-gray-100 transition-all"
                     >
                       Write Another
                     </button>
@@ -300,21 +299,21 @@ export default function Writer() {
 
         {/* Writing Tips */}
         <section className="mt-20 grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-surface-container-low p-8 rounded-3xl border border-surface-container-high">
+          <div className="bg-gray-100 p-8 rounded-xl border border-gray-300">
             <h4 className="font-headline font-bold text-xl mb-4 flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-primary" />
+              <CheckCircle2 className="w-5 h-5 text-red-600" />
               Creative Spark
             </h4>
-            <p className="text-on-surface-variant leading-relaxed">
+            <p className="text-gray-600 leading-relaxed">
               Stuck? Try thinking about your favorite toy, a place you'd love to visit, or a superpower you wish you had. No idea is too small!
             </p>
           </div>
-          <div className="bg-surface-container-low p-8 rounded-3xl border border-surface-container-high">
+          <div className="bg-gray-100 p-8 rounded-xl border border-gray-300">
             <h4 className="font-headline font-bold text-xl mb-4 flex items-center gap-2">
-              <PenTool className="w-5 h-5 text-primary" />
+              <PenTool className="w-5 h-5 text-red-600" />
               Growing Writer
             </h4>
-            <p className="text-on-surface-variant leading-relaxed">
+            <p className="text-gray-600 leading-relaxed">
               Every story you create helps your brain grow. Reading back your own stories is one of the best ways to practice!
             </p>
           </div>

@@ -76,12 +76,12 @@ export default function Glossary() {
       <div className="max-w-5xl mx-auto px-6 pb-24">
         <header className="mb-12">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center text-primary">
+            <div className="w-16 h-16 bg-red-600/10 rounded-xl flex items-center justify-center text-red-600">
               <BookMarked className="w-8 h-8" />
             </div>
             <div>
-              <h1 className="font-headline text-4xl font-extrabold tracking-tight text-on-surface">{t('glossary')}</h1>
-              <p className="text-on-surface-variant text-lg">{t('glossaryDesc')}</p>
+              <h1 className="font-headline text-4xl font-extrabold tracking-tight text-gray-900">{t('glossary')}</h1>
+              <p className="text-gray-600 text-lg">{t('glossaryDesc')}</p>
             </div>
           </div>
 
@@ -93,12 +93,12 @@ export default function Glossary() {
                 placeholder="Search your words..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-surface-container-high rounded-2xl py-4 pl-12 pr-4 shadow-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium"
+                className="w-full bg-white border border-gray-300 rounded-lg py-4 pl-12 pr-4 shadow-sm focus:ring-2 focus:ring-red-600/20 focus:border-red-600 outline-none transition-all font-medium"
               />
             </div>
             <button 
               onClick={() => setIsVoiceAssistantOpen(true)}
-              className="bg-primary/10 text-primary p-4 rounded-2xl hover:bg-primary/20 transition-all active:scale-95"
+              className="bg-red-600/10 text-red-600 p-4 rounded-lg hover:bg-red-600/20 transition-all active:scale-95"
               title="Voice Search"
             >
               <Mic className="w-6 h-6" />
@@ -108,21 +108,21 @@ export default function Glossary() {
 
         {loading ? (
           <div className="py-20 text-center">
-            <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-4" />
-            <p className="font-bold text-primary">Loading your words...</p>
+            <Loader2 className="w-10 h-10 animate-spin text-red-600 mx-auto mb-4" />
+            <p className="font-bold text-red-600">Loading your words...</p>
           </div>
         ) : words.length === 0 ? (
-          <div className="bg-surface-container-low rounded-3xl p-12 text-center border-2 border-dashed border-surface-container-high">
-            <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-6 text-primary/40">
+          <div className="bg-gray-100 rounded-xl p-12 text-center border-2 border-dashed border-gray-300">
+            <div className="w-20 h-20 bg-red-600/5 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600/40">
               <BookOpen className="w-10 h-10" />
             </div>
             <h3 className="text-2xl font-headline font-bold mb-3">Your glossary is empty</h3>
-            <p className="text-on-surface-variant mb-8 max-w-sm mx-auto">
+            <p className="text-gray-600 mb-8 max-w-sm mx-auto">
               Click on words you don't know while reading to add them to your personal collection.
             </p>
             <Link 
               to="/reader"
-              className="inline-flex items-center gap-2 bg-primary text-white px-8 py-4 rounded-xl font-bold hover:shadow-lg transition-all active:scale-95"
+              className="inline-flex items-center gap-2 bg-red-600 text-white px-8 py-4 rounded-xl font-bold hover:shadow-lg transition-all active:scale-95"
             >
               Start Reading
               <ExternalLink className="w-4 h-4" />
@@ -138,13 +138,13 @@ export default function Glossary() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="bg-white rounded-3xl p-8 border border-surface-container-high shadow-sm hover:shadow-md transition-all group relative overflow-hidden"
+                  className="bg-white rounded-xl p-8 border border-gray-300 shadow-sm hover:shadow-md transition-all group relative overflow-hidden"
                 >
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-full -mr-12 -mt-12 transition-transform group-hover:scale-110" />
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-red-600/5 rounded-bl-full -mr-12 -mt-12 transition-transform group-hover:scale-110" />
                   
                   <div className="flex justify-between items-start mb-4 relative z-10">
                     <div>
-                      <h3 className="text-2xl font-headline font-bold text-on-surface capitalize mb-1">{word.word}</h3>
+                      <h3 className="text-2xl font-headline font-bold text-gray-900 capitalize mb-1">{word.word}</h3>
                       <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest bg-stone-100 px-2 py-0.5 rounded">
                         {word.language === 'en' ? 'English' : word.language === 'sw' ? 'Swahili' : 'Spanish'}
                       </span>
@@ -152,19 +152,19 @@ export default function Glossary() {
                     <button 
                       onClick={() => deleteWord(word.id)}
                       disabled={deletingId === word.id}
-                      className="p-2 text-stone-300 hover:text-error hover:bg-error/10 rounded-full transition-all"
+                      className="p-2 text-stone-300 hover:text-red-600 hover:bg-red-100 rounded-full transition-all"
                     >
                       {deletingId === word.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
                     </button>
                   </div>
                   
-                  <p className="text-on-surface-variant leading-relaxed mb-6 relative z-10">
+                  <p className="text-gray-600 leading-relaxed mb-6 relative z-10">
                     {word.definition}
                   </p>
                   
                   <div className="flex items-center justify-between text-xs font-medium text-stone-400 border-t border-stone-50 pt-4 relative z-10">
                     <span>Added on {new Date(word.created_at).toLocaleDateString()}</span>
-                    <div className="flex items-center gap-1 text-primary/60">
+                    <div className="flex items-center gap-1 text-red-600/60">
                       <Sparkles className="w-3 h-3 fill-current" />
                       <span>AI Defined</span>
                     </div>

@@ -7,7 +7,7 @@ import { defineConfig, loadEnv } from "vite";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, __dirname, "");
+  const env = loadEnv(mode, path.join(__dirname, '..'), "");
   const apiProxyTarget = env.VITE_API_URL || "http://localhost:5000";
 
   return {
@@ -35,6 +35,8 @@ export default defineConfig(({ mode }) => {
     build: {
       base: "/Jumu-AI/",
       chunkSizeWarningLimit: 1500,
+      outDir: "dist",
+      emptyOutDir: true,
     },
   };
 });

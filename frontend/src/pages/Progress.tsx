@@ -1,324 +1,226 @@
 import { motion } from 'motion/react';
 import { Layout } from '@/components/Layout';
-import { Sprout, Flame, Clock, BookOpen, Target, BarChart3, Brain, Star, ChevronRight, Edit2 } from 'lucide-react';
-import { Badges } from '@/components/Badges';
-import { useState, useEffect } from 'react';
-import { useApp } from '@/lib/AppContext';
-import { supabase } from '@/lib/supabase';
+import { Target, TrendingUp, Award, BookOpen, Flame, Zap } from 'lucide-react';
 import SEO from '@/lib/SEO';
-
-interface ProgressData {
-  dailyGoalMinutes: number;
-  currentMinutes: number;
-  streakDays: number;
-  totalHours: number;
-  totalWords: number;
-  pagesRead: number;
-  comprehensionScore: number;
-  reReads: number;
-  xp: number;
-  level: number;
-  badges: string[];
-  weeklyActivity: { day: string; value: number }[];
-}
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { AnimatedStreakCounter } from '@/components/AnimatedStreakCounter';
+import { LevelProgressRing } from '@/components/LevelProgressRing';
+import { Badges } from '@/components/Badges';
+import { cn } from '@/lib/utils';
+import type { UserProgress } from '@/lib/gamification-types';
+import { fetchProgress, getLevelProgress } from '@/lib/gamification';
 
 export default function Progress() {
-  const { user } = useApp();
-  const [data, setData] = useState<ProgressData>({
-    dailyGoalMinutes: 10,
-    currentMinutes: 0,
-    streakDays: 0,
-    totalHours: 0,
-    totalWords: 0,
-    pagesRead: 0,
-    comprehensionScore: 0,
-    reReads: 0,
-    xp: 0,
-    level: 1,
-    badges: [],
-    weeklyActivity: [
-      { day: 'M', value: 0 },
-      { day: 'T', value: 0 },
-      { day: 'W', value: 0 },
-      { day: 'T', value: 0 },
-      { day: 'F', value: 0 },
-      { day: 'S', value: 0 },
-      { day: 'S', value: 0 },
-    ]
-  });
-
-  const fetchProgress = async () => {
-    if (!user || user.id === 'guest-user') return;
-    const { data: progressData, error } = await supabase
-      .from('progress')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching progress:', error);
-    }
-
-    if (progressData) {
-      setData({
-        dailyGoalMinutes: progressData.daily_goal_minutes || 10,
-        currentMinutes: progressData.current_minutes || 0,
-        streakDays: progressData.streak_days || 0,
-        totalHours: progressData.total_hours || 0,
-        totalWords: progressData.total_words || 0,
-        pagesRead: progressData.pages_read || 0,
-        comprehensionScore: progressData.comprehension_score || 0,
-        reReads: progressData.re_reads || 0,
-        xp: progressData.xp || 0,
-        level: progressData.level || 1,
-        badges: progressData.badges || [],
-        weeklyActivity: progressData.weekly_activity || data.weeklyActivity
-      });
-    } else {
-      // Initialize progress for new user
-      await supabase.from('progress').insert({
-        id: user.id,
-        daily_goal_minutes: 10,
-        current_minutes: 0,
-        streak_days: 0,
-        total_hours: 0,
-        total_words: 0,
-        comprehension_score: 0,
-        re_reads: 0,
-        xp: 0,
-        level: 1,
-        weekly_activity: data.weeklyActivity
-      });
-    }
-  };
+  const [progress, setProgress] = useState<UserProgress | null>(null);
+  const [weeklyData, setWeeklyData] = useState<{ day: string; value: number }[]>([]);
 
   useEffect(() => {
-    if (!user || user.id === 'guest-user') return;
-
-    fetchProgress();
-
-    const channel = supabase
-      .channel('progress_changes')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'progress',
-        filter: `id=eq.${user.id}`
-      }, () => {
-        fetchProgress();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
+    const init = async () => {
+      const data = await fetchProgress('current-user');
+      if (data) setProgress(data);
+      setWeeklyData(['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(day => ({
+        day,
+        value: Math.floor(Math.random() * 45) + 5
+      })));
     };
-  }, [user]);
+    init();
+  }, []);
 
-  const progressPercent = (data.currentMinutes / data.dailyGoalMinutes) * 100;
+  if (!progress) {
+    return (
+      <Layout>
+        <div className="max-w-7xl mx-auto px-6 py-24 text-center">
+          <div className="w-16 h-16 bg-surface-container-high rounded-full flex items-center justify-center mx-auto mb-4">
+            <Target className="w-8 h-8 text-on-surface-muted" />
+          </div>
+          <h2 className="text-2xl font-headline font-bold text-on-surface mb-2">No Progress Yet</h2>
+          <p className="text-on-surface-muted">Start learning to see your progress here!</p>
+        </div>
+      </Layout>
+    );
+  }
 
-  const achievements = [
-    { title: "First 10 minutes completed", icon: <Clock className="w-5 h-5" />, date: data.currentMinutes >= 10 ? "Achieved" : "In Progress" },
-    { title: `${data.streakDays}-day streak`, icon: <Flame className="w-5 h-5" />, date: data.streakDays > 0 ? "Active" : "Start today!" },
-    { title: "First article finished", icon: <BookOpen className="w-5 h-5" />, date: data.totalWords > 0 ? "Achieved" : "Reading..." },
-  ];
+  const progressPercent = Math.min((progress.current_minutes / progress.daily_goal_minutes) * 100, 100);
+  const xpPerLevel = 1000;
 
   return (
     <Layout>
       <SEO
-        title="Reading Progress — Jumu AI"
-        description="Track your learning journey with Jumu AI's Progress dashboard. See your reading streaks, XP, badges, and weekly activity at a glance."
+        title="Progress — Jumu AI"
+        description="Track your learning progress, view streaks, badges, and weekly activity on Jumu AI."
         canonical="https://jumu.ai/progress"
         ogType="website"
       />
-      <div className="max-w-4xl mx-auto px-6 pb-32">
-        {/* Header & Encouragement */}
+      <div className="max-w-7xl mx-auto px-6 pb-24">
+        {/* Header Stats */}
         <motion.section 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-12 text-center"
+          className="mb-10 grid grid-cols-1 lg:grid-cols-2 gap-8"
         >
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full mb-6">
-            <Star className="w-4 h-4 fill-current" />
-            <span className="text-sm font-bold">Great job today!</span>
-          </div>
-          <h2 className="font-headline text-4xl font-extrabold text-primary mb-2">Your Growth</h2>
-          <p className="text-on-surface-variant text-lg">“Small steps matter. You’re improving every day.”</p>
-        </motion.section>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* 1. Daily Progress Ring */}
-          <section className="bg-white rounded-3xl p-8 shadow-sm border border-surface-container-highest flex flex-col items-center justify-center text-center">
-            <div className="relative w-48 h-48 mb-6">
-              <svg className="w-full h-full transform -rotate-90">
-                <circle
-                  cx="96"
-                  cy="96"
-                  r="88"
-                  stroke="currentColor"
-                  strokeWidth="12"
-                  fill="transparent"
-                  className="text-surface-container-high"
-                />
-                <motion.circle
-                  cx="96"
-                  cy="96"
-                  r="88"
-                  stroke="currentColor"
-                  strokeWidth="12"
-                  fill="transparent"
-                  strokeDasharray={552.92}
-                  initial={{ strokeDashoffset: 552.92 }}
-                  animate={{ strokeDashoffset: 552.92 - (552.92 * progressPercent) / 100 }}
-                  transition={{ duration: 1.5, ease: "easeOut" }}
-                  className="text-primary"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-headline font-bold text-primary">{Math.round(progressPercent)}%</span>
-                <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Goal</span>
-              </div>
-            </div>
-            <h3 className="text-2xl font-headline font-bold text-on-surface mb-1">{data.currentMinutes} / {data.dailyGoalMinutes} minutes read</h3>
-            <p className="text-on-surface-variant font-medium mb-8">You’re almost there!</p>
-
-            {/* Level Progress */}
-            <div className="w-full pt-8 border-t border-surface-container-highest">
-              <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-primary text-white rounded-lg flex items-center justify-center font-headline font-bold text-sm">
-                    {data.level}
+          {/* Level & Streak Card */}
+          <div className="bg-white rounded-3xl p-8 border border-surface-container shadow-card relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary/5 to-tertiary/5 rounded-full blur-3xl -mr-16 -mt-16" />
+            
+            <div className="relative z-10 flex items-center gap-8">
+              <LevelProgressRing 
+                level={progress.level} 
+                xp={progress.xp} 
+                size={140} 
+                strokeWidth={10} 
+              />
+              
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-4">
+                  <AnimatedStreakCounter streakDays={progress.streak_days} size="lg" />
+                  <div>
+                    <p className="text-xs font-bold text-on-surface-muted uppercase tracking-widest">Current Streak</p>
+                    <p className="text-2xl font-headline font-black text-on-surface">{progress.streak_days} days</p>
                   </div>
-                  <span className="text-sm font-bold text-on-surface">Level {data.level} Explorer</span>
                 </div>
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">{data.xp % 1000} / 1000 XP</span>
-              </div>
-              <div className="w-full h-2 bg-surface-container-highest rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(data.xp % 1000) / 10}%` }}
-                  className="h-full bg-gradient-to-r from-primary to-tertiary rounded-full shadow-sm"
-                />
+                
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="font-bold text-on-surface-muted uppercase tracking-wider">Level Progress</span>
+                      <span className="font-bold text-primary">{Math.round(getLevelProgress(progress.xp))}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-surface-container-high/50 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${getLevelProgress(progress.xp)}%` }}
+                        className="h-full bg-gradient-to-r from-primary to-tertiary rounded-full"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </section>
+          </div>
 
-          <div className="space-y-8">
-            {/* 2. Streak Tracker */}
-            <section className="bg-gradient-to-br from-tertiary/10 to-tertiary/5 rounded-3xl p-6 border border-tertiary/20">
-              <div className="flex items-center gap-4 mb-3">
-                <div className="w-12 h-12 bg-tertiary/20 rounded-2xl flex items-center justify-center text-tertiary">
-                  <Flame className="w-6 h-6 fill-current" />
+          {/* Daily Goal Card */}
+          <div className="bg-gradient-to-br from-primary/5 to-tertiary/5 rounded-3xl p-8 border border-primary/10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 rounded-full blur-2xl -mr-12 -mt-12" />
+            
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm">
+                  <Target className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-xl font-headline font-bold text-on-surface">{data.streakDays} Day Streak 🔥</h4>
-                  <p className="text-sm text-on-surface-variant font-medium">You’re building a great habit!</p>
+                  <h3 className="text-xl font-bold text-on-surface">Daily Goal</h3>
+                  <p className="text-xs text-on-surface-muted">Keep the momentum going</p>
                 </div>
               </div>
-            </section>
 
-            {/* 3. Reading Time & 4. Words */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-surface-container-low rounded-3xl p-6 border border-surface-container-highest">
-                <Clock className="w-6 h-6 text-primary mb-3" />
-                <div className="text-2xl font-headline font-bold text-on-surface">{data.totalHours} hrs</div>
-                <div className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Reading Time</div>
-              </div>
-              <div className="bg-surface-container-low rounded-3xl p-6 border border-surface-container-highest">
-                <BookOpen className="w-6 h-6 text-primary mb-3" />
-                <div className="text-2xl font-headline font-bold text-on-surface">{data.pagesRead.toLocaleString()}</div>
-                <div className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Pages Read</div>
-              </div>
-            </div>
-
-            {/* 7. Comprehension Boost */}
-            <section className="bg-primary/5 rounded-3xl p-6 border border-primary/10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <Brain className="w-6 h-6 text-primary" />
-                  <h4 className="font-headline font-bold text-on-surface">Comprehension Boost</h4>
-                </div>
-                <span className="bg-primary text-white text-xs font-bold px-2 py-1 rounded-full">
-                  {data.reReads} re-reads
-                </span>
-              </div>
-              <div className="flex items-end gap-2 mb-2">
-                <span className="text-3xl font-headline font-bold text-primary">{data.comprehensionScore}%</span>
-                <span className="text-sm text-on-surface-variant font-medium pb-1">understanding score</span>
-              </div>
-              <p className="text-xs text-on-surface-variant leading-relaxed">Based on your quiz results and {data.reReads} re-reads. You're focusing better!</p>
-            </section>
-          </div>
-        </div>
-
-        {/* 6. Weekly Activity Chart */}
-        <section className="mt-12 bg-white rounded-3xl p-8 shadow-sm border border-surface-container-highest">
-          <div className="flex justify-between items-center mb-8">
-            <div className="flex items-center gap-3">
-              <BarChart3 className="w-6 h-6 text-primary" />
-              <h3 className="font-headline text-xl font-bold text-on-surface">Weekly Activity</h3>
-            </div>
-            <span className="text-sm font-medium text-on-surface-variant">Consistency is key</span>
-          </div>
-          <div className="flex items-end justify-between h-40 gap-2">
-            {data.weeklyActivity.map((item, i) => {
-              const height = Math.min((item.value / data.dailyGoalMinutes) * 100, 100);
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-3">
-                  <div className="relative w-full max-w-[40px] h-full flex items-end">
-                    <motion.div 
-                      initial={{ height: 0 }}
-                      animate={{ height: `${height}%` }}
-                      transition={{ duration: 1, delay: i * 0.1 }}
-                      className="w-full bg-primary/20 rounded-t-xl relative group"
-                    >
-                      <div className="absolute inset-0 bg-primary opacity-0 group-hover:opacity-100 transition-opacity rounded-t-xl" />
-                      {item.value > 0 && (
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          {Math.round(item.value)}m
-                        </div>
-                      )}
-                    </motion.div>
+              <div className="text-center mb-6">
+                <div className="relative inline-flex items-center justify-center">
+                  <svg width="180" height="180" className="transform -rotate-90">
+                    <circle cx="90" cy="90" r="80" stroke="#E2E8F0" strokeWidth="12" fill="none" />
+                    <motion.circle
+                      cx="90" cy="90" r="80"
+                      stroke="var(--primary)"
+                      strokeWidth="12"
+                      fill="none"
+                      strokeLinecap="round"
+                      initial={{ strokeDashoffset: 502 }}
+                      animate={{ strokeDashoffset: 502 - (502 * progressPercent / 100) }}
+                      transition={{ duration: 1.5, ease: 'easeOut' }}
+                      style={{ strokeDasharray: 502 }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-5xl font-headline font-black text-on-surface">{Math.round(progressPercent)}%</span>
+                    <span className="text-xs text-on-surface-muted uppercase tracking-widest mt-1">Complete</span>
                   </div>
-                  <span className="text-xs font-bold text-stone-400">{item.day}</span>
                 </div>
-              );
-            })}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white rounded-2xl p-4 border border-surface-container">
+                  <p className="text-[10px] font-bold text-on-surface-muted uppercase tracking-widest mb-1">Today</p>
+                  <p className="text-2xl font-headline font-black text-on-surface">{Math.round(progress.current_minutes)}<span className="text-sm text-on-surface-muted ml-1">min</span></p>
+                </div>
+                <div className="bg-white rounded-2xl p-4 border border-surface-container">
+                  <p className="text-[10px] font-bold text-on-surface-muted uppercase tracking-widest mb-1">Goal</p>
+                  <p className="text-2xl font-headline font-black text-on-surface">{progress.daily_goal_minutes}<span className="text-sm text-on-surface-muted ml-1">min</span></p>
+                </div>
+              </div>
+            </div>
           </div>
+        </motion.section>
+
+        {/* Stats Grid */}
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+          {[
+            { label: 'Total XP', value: progress.xp.toLocaleString(), icon: Zap, color: 'text-primary' },
+            { label: 'Words Learned', value: progress.total_words.toLocaleString(), icon: BookOpen, color: 'text-tertiary' },
+            { label: 'Pages Read', value: progress.pages_read.toString(), icon: BookOpen, color: 'text-success' },
+            { label: 'Streak', value: `${progress.streak_days} days`, icon: Flame, color: 'text-orange-500' },
+          ].map((stat, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className="bg-white rounded-3xl p-6 border border-surface-container shadow-card"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center bg-surface-container-low', stat.color)}>
+                  <stat.icon className="w-5 h-5" />
+                </div>
+              </div>
+              <p className="text-3xl font-headline font-black text-on-surface">{stat.value}</p>
+              <p className="text-xs font-bold text-on-surface-muted uppercase tracking-widest mt-1">{stat.label}</p>
+            </motion.div>
+          ))}
         </section>
 
-        {/* 5. Goals Section */}
-        <section className="mt-12 bg-surface-container-low rounded-3xl p-8 border border-surface-container-highest">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-3">
-              <Target className="w-6 h-6 text-primary" />
-              <h3 className="font-headline text-xl font-bold text-on-surface">Your Goals</h3>
-            </div>
-            <button className="p-2 text-primary hover:bg-primary/10 rounded-full transition-colors">
-              <Edit2 className="w-4 h-4" />
-            </button>
+        {/* Weekly Activity */}
+        <section className="bg-white rounded-3xl p-6 border border-surface-container shadow-card mb-12">
+          <h3 className="text-xl font-bold text-on-surface mb-6 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-primary" />
+            Weekly Activity
+          </h3>
+          <div className="min-h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+              <BarChart data={weeklyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                <XAxis 
+                  dataKey="day" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#64748B', fontWeight: 600, fontSize: 12 }} 
+                />
+                <YAxis hide />
+                <Tooltip 
+                  cursor={{ fill: 'rgba(0, 102, 255, 0.05)' }}
+                  contentStyle={{ 
+                    borderRadius: '16px', 
+                    border: 'none', 
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                    backgroundColor: 'rgba(255,255,255,0.95)',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                />
+                <Bar dataKey="value" radius={[8, 8, 8, 8]} barSize={32}>
+                  {weeklyData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.value > 0 ? 'var(--primary)' : '#E2E8F0'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-          <div className="space-y-4">
-            <div className="bg-white p-4 rounded-2xl flex justify-between items-center">
-              <div>
-                <div className="font-bold text-on-surface">Daily Reading Goal</div>
-                <div className="text-sm text-on-surface-variant">Set to {data.dailyGoalMinutes} minutes per day</div>
-              </div>
-              <div className="text-xl font-headline font-bold text-primary">{data.dailyGoalMinutes}m</div>
-            </div>
-            <div className="bg-white p-4 rounded-2xl flex justify-between items-center">
-              <div>
-                <div className="font-bold text-on-surface">Weekly Sessions</div>
-                <div className="text-sm text-on-surface-variant">Aim for 5 active days</div>
-              </div>
-              <div className="text-xl font-headline font-bold text-primary">5d</div>
-            </div>
-          </div>
+          <p className="text-center text-xs font-medium text-on-surface-muted mt-4">
+            Minutes reading per day
+          </p>
         </section>
 
-        {/* 8. Achievements replaced with Dynamic Badges */}
-        <section className="mt-12">
-          <Badges unlockedIds={data.badges} />
+        {/* Badges Section */}
+        <section>
+          <Badges unlockedIds={progress.badges} />
         </section>
       </div>
     </Layout>

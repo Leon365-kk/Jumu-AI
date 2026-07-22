@@ -18,7 +18,7 @@ export default function Splash() {
     <Layout hideNav>
       <SEO
         title="Jumu AI — Welcome"
-        description="Jumu AI: A cognitive sanctuary for neurodiverse learners. Smart reader, AI story maker, math visualizer, and more."
+        description="Jumu AI: Reading tools, story maker, math helper, and focus timer for students who learn differently."
         canonical={typeof window !== 'undefined' ? window.location.origin : 'https://jumu.ai'}
         noIndex
       />
@@ -38,7 +38,7 @@ export default function Splash() {
               className="flex flex-col gap-4 max-w-md"
             >
               <h1 className="font-headline font-extrabold text-7xl md:text-8xl tracking-tighter text-on-surface">
-                Jumu Ai
+                Jumu AI
               </h1>
               <p className="text-on-surface-variant text-xl md:text-2xl font-medium tracking-wide opacity-80 italic">
                 Gather & Learn

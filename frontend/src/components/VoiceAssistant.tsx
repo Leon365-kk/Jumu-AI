@@ -180,7 +180,7 @@ export function VoiceAssistant() {
       {/* Floating Trigger Button */}
       <button
         onClick={() => setIsVoiceAssistantOpen(!isVoiceAssistantOpen)}
-        className="fixed bottom-20 right-6 z-50 w-14 h-14 bg-primary text-white rounded-full shadow-lg shadow-primary/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+        className="fixed bottom-20 right-6 z-50 w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
         aria-label="Toggle voice assistant"
       >
         {isVoiceAssistantOpen ? <X className="w-6 h-6" /> : <Mic className="w-6 h-6" />}

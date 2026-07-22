@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { Layout } from '@/components/Layout';
-import { User, ArrowRight, Sparkles } from 'lucide-react';
+import { User, ArrowRight, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/lib/AppContext';
@@ -8,15 +8,9 @@ import SEO from '@/lib/SEO';
 
 export default function OnboardingName() {
   const navigate = useNavigate();
-  const { userName, setUserName, user } = useApp();
+  const { userName, setUserName } = useApp();
   const [name, setName] = useState(userName);
   const [hasSpokenFirst, setHasSpokenFirst] = useState(false);
-
-  useEffect(() => {
-    if (user && userName && userName !== 'Alex') {
-      navigate('/dashboard');
-    }
-  }, [user, userName, navigate]);
 
   const speak = (text: string, onEnd?: () => void) => {
     if ('speechSynthesis' in window) {
@@ -43,9 +37,7 @@ export default function OnboardingName() {
   const handleContinue = () => {
     if (name.trim()) {
       setUserName(name.trim());
-      speak(`Hey ${name}, what can I do for you today? Let's customize your app.`, () => {
-        navigate('/onboarding/personalize');
-      });
+      navigate('/onboarding/age');
     }
   };
 
@@ -85,7 +77,7 @@ export default function OnboardingName() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-primary"
               >
-                <Sparkles className="w-6 h-6 fill-current" />
+                <Check className="w-6 h-6" />
               </motion.div>
             )}
           </div>

@@ -6,6 +6,8 @@ export interface PageSEO {
   title: string;
   description: string;
   canonical?: string;
+  ogType?: string;
+  ogImage?: string;
   openGraph?: { title?: string; description?: string; image?: string; url?: string; type?: string };
   twitter?: { card?: string; title?: string; description?: string; image?: string };
   noIndex?: boolean;
@@ -24,18 +26,20 @@ export function updatePageMetadata(seo: PageSEO) {
   upsertMeta("name", "robots", seo.noIndex ? "noindex, nofollow" : "index, follow");
 
   if (seo.canonical) {
-    let l = document.querySelector('link[rel="canonical"]') as HTMLAnchorElement | null;
+    let l = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
     if (!l) { l = document.createElement("link"); l.rel = "canonical"; document.head.appendChild(l); }
     l.href = seo.canonical;
   }
 
-  if (seo.openGraph) {
-    upsertMeta("property", "og:title",       seo.openGraph.title       || seo.title);
-    upsertMeta("property", "og:description", seo.openGraph.description || seo.description);
-    seo.openGraph.image && upsertMeta("property", "og:image", seo.openGraph.image);
-    seo.openGraph.url   && upsertMeta("property", "og:url",   seo.openGraph.url);
-    seo.openGraph.type  && upsertMeta("property", "og:type",  seo.openGraph.type);
-  }
+  const ogType = seo.ogType || seo.openGraph?.type || "website";
+  const ogImage = seo.ogImage || seo.openGraph?.image || "";
+  const ogUrl = seo.openGraph?.url || seo.canonical || "";
+
+  upsertMeta("property", "og:title",       seo.openGraph?.title       || seo.title);
+  upsertMeta("property", "og:description", seo.openGraph?.description || seo.description);
+  ogImage && upsertMeta("property", "og:image", ogImage);
+  ogUrl && upsertMeta("property", "og:url", ogUrl);
+  upsertMeta("property", "og:type", ogType);
 
   if (seo.twitter) {
     upsertMeta("name", "twitter:title",       seo.twitter.title       || seo.title);
@@ -77,12 +81,12 @@ export const pageMetadata: Record<string, PageSEO> = {
   "/": {
     title: "Jumu AI — Learn with Joy, Not Struggle",
     description:
-      "Jumu AI is a cognitive sanctuary for neurodiverse learners. Features smart text-to-speech reading, an AI-powered story maker, math visualizer, focus zone, and voice assistant. Free to try.",
+      "Jumu AI provides reading assistance, math visualization, and focus tools designed specifically for students with ADHD, dyslexia, and other learning differences. Free to try.",
     canonical: BASE_URL,
     openGraph: {
       title: "Jumu AI — Learn with Joy, Not Struggle",
       description:
-        "A cognitive sanctuary for neurodiverse learners. AI-powered reading, math, and focus tools built with love for brains that work differently.",
+        "Reading assistance, math visualization, and focus tools designed for students with ADHD, dyslexia, and processing differences.",
       image: `${BASE_URL}/og-image.png`,
       url: BASE_URL,
       type: "website",
@@ -91,18 +95,18 @@ export const pageMetadata: Record<string, PageSEO> = {
       card: "summary_large_image",
       title: "Jumu AI — Learn with Joy, Not Struggle",
       description:
-        "AI-powered learning companion. Smart Reader, Math Visualizer, Focus Zone & more — built for neurodiverse minds.",
+        "Reading tools, math helper, and focus timer for students who learn differently.",
       image: `${BASE_URL}/og-image.png`,
     },
   },
   "/reader": {
     title: "Smart Reader — Jumu AI",
     description:
-      "Read with Jumu AI's text-to-speech Smart Reader. Features OpenDyslexic fonts, instant word definitions, custom speed controls, and AI-powered comprehension. Designed for neurodiverse learners.",
+      "Text-to-speech reading with OpenDyslexic fonts, instant word definitions, custom speed controls, and reading comprehension support. Designed for students with dyslexia and reading difficulties.",
     openGraph: {
       title: "Smart Reader — Jumu AI",
       description:
-        "Text-to-speech reading with OpenDyslexic fonts, voice narration, and AI comprehension. Making reading accessible and joyful.",
+        "Text-to-speech reading with OpenDyslexic fonts, voice narration, and comprehension support.",
     },
   },
   "/library": {
@@ -116,33 +120,33 @@ export const pageMetadata: Record<string, PageSEO> = {
     },
   },
   "/writer": {
-    title: "AI Story Maker — Jumu AI",
+    title: "Story Maker — Jumu AI",
     description:
-      "Transform your wild ideas into beautiful stories with the Jumu AI Story Maker. Let AI guide your creative writing journey with genre-specific templates.",
+      "Create your own stories with guided writing prompts and genre templates. Build creative writing skills through structured storytelling exercises.",
     openGraph: {
-      title: "AI Story Maker — Jumu AI",
+      title: "Story Maker — Jumu AI",
       description:
-        "Turn your imagination into written stories with AI-guided templates. Choose adventure, mystery, sci-fi, and more.",
+        "Create stories with guided writing prompts and genre templates. Choose adventure, mystery, sci-fi, and more.",
     },
   },
   "/math": {
     title: "Math Visualizer — Jumu AI",
     description:
-      "Break down complex math problems into easy-to-follow steps with Jumu AI's Math Visualizer. Upload a problem or snap a photo for an instant step-by-step solution.",
+      "Break down math problems into step-by-step explanations. Upload a worksheet or snap a photo to see each solution step clearly explained.",
     openGraph: {
       title: "Math Visualizer — Jumu AI",
       description:
-        "AI-powered math tutor that breaks problems into friendly, visual, step-by-step guides. Camera or file upload supported.",
+        "Step-by-step math explanations with visual guides. Camera or file upload supported.",
     },
   },
   "/focus-zone": {
     title: "Focus Zone — Jumu AI",
     description:
-      "Enter the Focus Zone — a sensory-friendly environment with ambient white noise, pink noise, and rain sounds to help neurodiverse learners find their calm.",
+      "A focus timer with ambient sounds including rain, forest, and white noise. Includes visual fidget tools and task tracking for students who need sensory regulation.",
     openGraph: {
       title: "Focus Zone — Jumu AI",
       description:
-        "A safe harbor of ambient sounds and sensory tools to help you find your calm when the world feels too loud.",
+        "Focus timer with ambient sounds and visual tools for sensory regulation.",
     },
   },
   "/camera": {
@@ -159,11 +163,11 @@ export const pageMetadata: Record<string, PageSEO> = {
   "/progress": {
     title: "Reading Progress — Jumu AI",
     description:
-      "Track your learning journey with Jumu AI's Progress dashboard. See your reading streaks, XP, badges, and weekly activity at a glance.",
+      "Track your reading time, pages read, comprehension scores, and weekly activity. View your streaks and achievements in one dashboard.",
     openGraph: {
       title: "Reading Progress — Jumu AI",
       description:
-        "Track your reading streaks, XP, and badges. Celebrate every small victory on your personal learning journey.",
+        "Track reading time, pages, comprehension scores, and achievements.",
     },
   },
   "/glossary": {
@@ -179,11 +183,11 @@ export const pageMetadata: Record<string, PageSEO> = {
   "/dashboard": {
     title: "Dashboard — Jumu AI",
     description:
-      "Your personalized Jumu AI dashboard. Track daily progress, view reading challenges, earn badges, and focus insights — all in one place.",
+      "Your learning dashboard with daily progress, reading challenges, badges, and weekly activity stats.",
     openGraph: {
       title: "Dashboard — Jumu AI",
       description:
-        "Your daily learning hub. Progress stats, challenges, badges, and AI insights to motivate you every day.",
+        "Daily progress stats, challenges, badges, and activity tracking.",
     },
   },
   "/login": {
