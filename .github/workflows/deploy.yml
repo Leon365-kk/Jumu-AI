@@ -46,6 +46,8 @@ jobs:
           sed -i 's|src="/assets/|src="/Jumu-AI/assets/|g' dist/index.html
           sed -i 's|href="/assets/|href="/Jumu-AI/assets/|g' dist/index.html
           sed -i 's|href="/manifest.json"|href="/Jumu-AI/manifest.json"|g' dist/index.html
+          sed -i 's|href="/favicon|href="/Jumu-AI/favicon|g' dist/index.html
+          sed -i 's|href="/apple-touch-icon|href="/Jumu-AI/apple-touch-icon|g' dist/index.html
           sed -i "s|navigator.serviceWorker\.register('/sw.js')|navigator.serviceWorker.register('/Jumu-AI/sw.js')|g" dist/index.html
 
       - name: Upload artifact
