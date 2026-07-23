@@ -33,7 +33,6 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      base: "/Jumu-AI/",
       chunkSizeWarningLimit: 1500,
       outDir: "dist",
       emptyOutDir: true,

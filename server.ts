@@ -2,9 +2,13 @@ import express, { type NextFunction, type Request, type Response } from "express
 import cors from "cors";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import dotenv from "dotenv";
-
-dotenv.config({ path: ".env.local" });
+import analyticsRouter from "./src/routes/analytics.ts";
+import institutionsRouter from "./src/routes/institutions.ts";
+import organizationsRouter from "./src/routes/organizations.ts";
+import recommendationsRouter from "./src/routes/recommendations.ts";
+import sessionsRouter from "./src/routes/sessions.ts";
+import onboardingRouter from "./src/routes/onboarding.ts";
+import { get, set } from "./src/lib/cache.ts";
 
 const NVIDIA_API_BASE = "https://integrate.api.nvidia.com/v1";
 const NVIDIA_KEY = process.env.NVIDIA_API_KEY;
@@ -87,7 +91,6 @@ async function startServer() {
     "http://localhost:5173",
   ];
   app.use(cors({ origin: allowedOrigins, credentials: true }));
-  app.options("*", cors({ origin: allowedOrigins, credentials: true }));
 
   app.use(express.json({ limit: "10mb" }));
 
@@ -153,7 +156,7 @@ async function startServer() {
       };
 
       // Map Gemini config to NIM config
-      const temp = config?.temperature ?? config?.temperature ?? 0.7;
+      const temp = config?.temperature ?? config?.temp ?? 0.7;
       const topP = config?.topP ?? config?.top_p ?? 0.9;
       if (temp !== undefined) body.temperature = temp;
       if (topP !== undefined) body.top_p = topP;
@@ -163,6 +166,18 @@ async function startServer() {
         body.response_format = { type: "json_object" };
       }
 
+      // Create cache key from request (skip image payloads for caching)
+      const cacheKey = `nvidia:${nvidiaModel}:${JSON.stringify(body)}`;
+
+      // Check cache first (only for text-only requests)
+      if (imagePayloads.length === 0) {
+        const cached = await get(cacheKey);
+        if (cached) {
+          console.log('Cache hit for NVIDIA API request');
+          return res.json(cached);
+        }
+      }
+
       const response = await fetch(`${NVIDIA_API_BASE}/chat/completions`, {
         method: "POST",
         headers: {
@@ -170,6 +185,7 @@ async function startServer() {
           Authorization: `Bearer ${NVIDIA_KEY}`,
         },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(30000), // 30-second timeout
       });
 
       if (!response.ok) {
@@ -197,7 +213,14 @@ async function startServer() {
             ]
           : undefined;
 
-      res.json({ text, candidates });
+      const responseData = { text, candidates };
+
+      // Cache response for text-only requests (1 hour TTL)
+      if (imagePayloads.length === 0) {
+        await set(cacheKey, responseData, 3600);
+      }
+
+      res.json(responseData);
     } catch (error: any) {
       console.error("NVIDIA Proxy Error:", error);
       res.status(500).json({ error: error.message || "Internal Server Error" });
@@ -213,9 +236,18 @@ async function startServer() {
     });
   });
 
+  // API Routes for analytics and onboarding
+  app.use("/api/analytics", analyticsRouter);
+  app.use("/api/recommendations", recommendationsRouter);
+  app.use("/api/sessions", sessionsRouter);
+  app.use("/api/institutions", institutionsRouter);
+  app.use("/api/organizations", organizationsRouter);
+  app.use("/api/onboarding", onboardingRouter);
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
+      root: "frontend",
       server: { middlewareMode: true },
       appType: "spa",
     });
@@ -223,7 +255,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (_req: Request, res: Response) => {
+    app.use((_req: Request, res: Response) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }

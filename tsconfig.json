@@ -17,10 +17,27 @@
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
-        "./src/*"
+        "./frontend/src/*"
+      ],
+      "@/components/*": [
+        "./frontend/src/components/*"
+      ],
+      "@/lib/*": [
+        "./frontend/src/lib/*"
+      ],
+      "@/pages/*": [
+        "./frontend/src/pages/*"
+      ],
+      "@/services/*": [
+        "./frontend/src/services/*"
       ]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "frontend/src/**/*",
+    "src/**/*",
+    "frontend/src/vite-env.d.ts"
+  ]
 }

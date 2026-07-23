@@ -4,15 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "nodemon --watch 'src/**/*.ts' --exec 'npx ts-node' src/index.ts",
+    "dev": "nodemon --watch src/**/*.ts --exec npx ts-node server.ts",
     "build": "cd frontend && vite build",
     "preview": "cd frontend && vite preview",
     "clean": "rm -rf frontend/dist",
     "lint": "tsc --noEmit",
-    "start": "npx ts-node src/index.ts"
+    "start": "npx ts-node server.ts",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "@google/genai": "^1.29.0",
     "@supabase/supabase-js": "^2.103.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
@@ -22,13 +23,12 @@
     "express": "^5.2.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
-    "pdfjs-dist": "^5.7.284",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.14.0",
     "recharts": "^3.8.1",
+    "redis": "^6.1.0",
     "tailwind-merge": "^3.5.0",
-    "tesseract.js": "^7.0.0",
     "vite": "^6.2.0"
   },
   "devDependencies": {
@@ -37,6 +37,8 @@
     "@types/node": "^22.14.0",
     "@types/recharts": "^1.8.29",
     "autoprefixer": "^10.4.21",
+    "gh-pages": "^6.3.0",
+    "nodemon": "^3.1.14",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
