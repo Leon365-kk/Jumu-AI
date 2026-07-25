@@ -16,7 +16,7 @@ export interface GeminiResponse {
   errorType?: 'network_error' | 'timeout_error' | 'api_error' | 'server_error' | 'auth_error';
 }
 
-const rawApiBase = ((import.meta as any).env.VITE_API_URL || "").trim();
+const rawApiBase = ((import.meta as any).env.VITE_API_URL || "https://jumu-server.onrender.com").trim();
 const API_BASE = rawApiBase.replace(/\/$/, "");
 
 export async function generateAIContent(request: GeminiRequest): Promise<GeminiResponse> {
