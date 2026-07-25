@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon --watch src/**/*.ts --exec npx ts-node server.ts",
-    "build": "cd frontend && vite build",
+    "build": "cd frontend && npm install && npm run build",
     "preview": "cd frontend && vite preview",
     "clean": "rm -rf frontend/dist",
     "lint": "tsc --noEmit",

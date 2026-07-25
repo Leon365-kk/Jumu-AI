@@ -88,8 +88,9 @@ export default function Writer() {
         setStory(output);
         setTitle("My Creative Story");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Error:", error);
+      alert("Sorry, I couldn't create your story right now. Please try again.");
     } finally {
       setIsGenerating(false);
     }

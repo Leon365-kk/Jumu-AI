@@ -22,7 +22,7 @@ interface GutenbergBook {
   download_count: number;
 }
 
-export default function Writer() {
+export default function LibraryPage() {
   const { language, t, user, addXP } = useApp();
   
   // Recent Reading State
@@ -74,8 +74,6 @@ export default function Writer() {
     try {
       setIsLibraryLoading(true);
       addXP(rewards.USE_TOOL, "Exploring new book", [{ id: '4', increment: 1 }]);
-      // We use a proxy or direct fetch if CORS allows, Gutendex/Gutenberg usually needs a proxy for raw text
-      // For this demo, we'll navigate to reader and let it handle the fetch or use a snippet
       navigate('/reader', { 
         state: { 
           bookTitle: book.title, 
@@ -109,7 +107,7 @@ export default function Writer() {
 
   useEffect(() => {
     if (libraryBooks.length === 0 && !searchQuery) {
-      searchBooks('children'); // Default search for children's books
+      searchBooks('children');
     }
     
     if (user) {
@@ -201,8 +199,8 @@ export default function Writer() {
                             {book.cover_url ? (
                               <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-stone-300">
-                                <BookOpen className="w-8 h-8" />
+                              <div className="w-full h-full flex items-center justify-center bg-red-600/5">
+                                <BookOpen className="w-8 h-8 text-red-600/30" />
                               </div>
                             )}
                           </div>

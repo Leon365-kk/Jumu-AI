@@ -27,28 +27,34 @@ export default function CameraView() {
       reader.onloadend = async () => {
         const base64Data = (reader.result as string).split(',')[1];
         
-        const result = await generateAIContent({
-          model: "meta/llama-3.2-90b-vision-instruct", // NVIDIA NIM vision model for OCR
-          contents: [{
-            parts: [
-              {
-                inlineData: {
-                  data: base64Data,
-                  mimeType: file.type
-                }
-              },
-              { text: `Extract all visible text from this document. If it's a receipt, list the items and prices. If it's a book page or PDF, extract the text clearly. Maintain the original structure as much as possible. Respond only with the extracted text in ${language}.` }
-            ]
-          }]
-        });
-        
-        setExtractedText(result.text || '');
-        setIsCaptured(true);
-        setIsProcessing(false);
+        try {
+          const result = await generateAIContent({
+            model: "meta/llama-3.2-90b-vision-instruct",
+            contents: [{
+              parts: [
+                {
+                  inlineData: {
+                    data: base64Data,
+                    mimeType: file.type
+                  }
+                },
+                { text: `Extract all visible text from this document. If it's a receipt, list the items and prices. If it's a book page or PDF, extract the text clearly. Maintain the original structure as much as possible. Respond only with the extracted text in ${language}.` }
+              ]
+            }]
+          });
+          
+          setExtractedText(result.text || '');
+          setIsCaptured(true);
+        } catch (error: any) {
+          console.error("OCR Error:", error);
+          alert("Sorry, I couldn't read that image. Please try a clearer photo.");
+        } finally {
+          setIsProcessing(false);
+        }
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error("OCR Error:", error);
+      console.error("File reading error:", error);
       setIsProcessing(false);
     }
   };

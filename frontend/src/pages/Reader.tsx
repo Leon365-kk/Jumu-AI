@@ -563,9 +563,10 @@ export default function Reader() {
       
       const questions = JSON.parse(result.text || '[]');
       setQuizQuestions(questions);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Quiz generation error:", error);
       setShowQuiz(false);
+      alert("Sorry, I couldn't generate a quiz right now. Please try again.");
     } finally {
       setIsGeneratingQuiz(false);
     }
@@ -689,7 +690,6 @@ export default function Reader() {
 
     setIsTtsLoading(true);
     try {
-      // Select voice based on language
       const voiceMap = {
         en: 'Kore',
         es: 'Kore',
@@ -698,8 +698,8 @@ export default function Reader() {
       const voiceName = voiceMap[language as keyof typeof voiceMap] || 'Kore';
 
       const response = await generateAIContent({
-        model: "meta/llama-3.1-8b-instruct", // NVIDIA NIM text model (TTS audio not returned by NIM)
-        contents: [{ parts: [{ text: activeText.substring(0, 3000) }] }], // Keep latency low
+        model: "meta/llama-3.1-8b-instruct",
+        contents: [{ parts: [{ text: activeText.substring(0, 3000) }] }],
         config: {
           responseModalities: ["AUDIO"],
           speechConfig: {
@@ -713,7 +713,6 @@ export default function Reader() {
       const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
       if (!base64Audio) throw new Error("No audio returned");
 
-      // Initialize AudioContext on user gesture
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
@@ -726,13 +725,11 @@ export default function Reader() {
         bytes[i] = binaryString.charCodeAt(i);
       }
 
-      // Gemini TTS returns PCM L16 24000Hz. We need to convert this to an AudioBuffer.
-      // Note: This is raw PCM, not a WAV/MP3.
       const rawData = bytes.buffer;
       const int16Array = new Int16Array(rawData);
       const float32Array = new Float32Array(int16Array.length);
       for (let i = 0; i < int16Array.length; i++) {
-        float32Array[i] = int16Array[i] / 32768; // Normalize -1 to 1
+        float32Array[i] = int16Array[i] / 32768;
       }
 
       const audioBuffer = audioContext.createBuffer(1, float32Array.length, 24000);
@@ -750,13 +747,11 @@ export default function Reader() {
       audioSourceRef.current = source;
       source.start(0);
       setIsReading(true);
-      
-      // Simulation of word highlighting (rough approximation)
-      // Since we don't have boundaries from Gemini TTS yet, we'll just highlight the start
       setCurrentWordIndex(0);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Gemini TTS Error:", error);
+      alert("Sorry, I couldn't read this page out loud right now. Please try again.");
     } finally {
       setIsTtsLoading(false);
     }
@@ -811,13 +806,15 @@ export default function Reader() {
   const handleSummarize = async () => {
     if (!text || isSummarizing) return;
     setIsSummarizing(true);
+    setSummary(null);
     try {
       const result = await generateAIContent({
         contents: [{ parts: [{ text: `Summarize the following text in ${language} using very simple, child-friendly language. Focus on the main ideas and keep it brief: ${pages[currentPage]}` }] }]
       });
       setSummary(result.text || "Could not generate summary.");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Summarization error:", error);
+      setSummary("Sorry, I couldn't summarize that right now. Please try again.");
     } finally {
       setIsSummarizing(false);
     }
@@ -832,13 +829,12 @@ export default function Reader() {
       });
       
       const simplifiedText = result.text || pages[currentPage];
-      // Replace the current page with simplified text or just show it?
-      // For now, let's just update the current page in a temporary way
       const newPages = [...pages];
       newPages[currentPage] = simplifiedText;
       setPages(newPages);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Simplification error:", error);
+      alert("Sorry, I couldn't simplify that right now. Please try again.");
     } finally {
       setIsSimplifying(false);
     }
@@ -946,9 +942,9 @@ export default function Reader() {
         
         if (data) setWordSaved(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Definition error:", error);
-      setWordDefinition("I'm sorry, I couldn't find a definition for that word right now.");
+      setWordDefinition("I'm sorry, I couldn't find a definition for that word right now. Please check your connection and try again.");
     } finally {
       setIsDefining(false);
     }

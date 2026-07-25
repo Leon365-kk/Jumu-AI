@@ -31,7 +31,7 @@ export async function get(key: string): Promise<any | null> {
     const client = await getRedisClient();
     if (client) {
       const data = await client.get(key);
-      return data ? JSON.parse(data) : null;
+      return data ? JSON.parse(data.toString()) : null;
     }
 
     // Fallback to memory cache

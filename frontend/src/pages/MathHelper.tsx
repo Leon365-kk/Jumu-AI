@@ -56,7 +56,7 @@ export default function MathHelper() {
 
         try {
           const result = await generateAIContent({
-            model: "meta/llama-3.2-90b-vision-instruct", // NVIDIA NIM vision model for math
+            model: "meta/llama-3.2-90b-vision-instruct",
             contents: [
               {
                 parts: [
@@ -75,7 +75,7 @@ export default function MathHelper() {
             setSolution(data);
             addXP(rewards.USE_TOOL, "Math Problem Solved");
           }
-        } catch (err) {
+        } catch (err: any) {
           console.error("AI Error:", err);
           alert("I couldn't quite read that math problem. Could you try taking a clearer photo?");
         } finally {

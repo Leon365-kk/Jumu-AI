@@ -17,9 +17,10 @@ const MathHelper = lazy(() => import('./pages/MathHelper'));
 const FocusZone = lazy(() => import('./pages/FocusZone'));
 const CameraView = lazy(() => import('./pages/Camera'));
 const Settings = lazy(() => import('./pages/Settings'));
-const Progress = lazy(() => import('./pages/Progress'));
-const Glossary = lazy(() => import('./pages/Glossary'));
-const OnboardingName = lazy(() => import('./pages/OnboardingName'));
+  const Progress = lazy(() => import('./pages/Progress'));
+  const Glossary = lazy(() => import('./pages/Glossary'));
+  const Achievements = lazy(() => import('./pages/Achievements'));
+  const OnboardingName = lazy(() => import('./pages/OnboardingName'));
 const OnboardingEntity = lazy(() => import('./pages/OnboardingEntity'));
 const OnboardingGrade = lazy(() => import('./pages/OnboardingGrade'));
 const OnboardingStyle = lazy(() => import('./pages/OnboardingStyle'));
@@ -100,6 +101,7 @@ function AnimatedRoutes() {
           <Route path="/camera" element={<CameraView />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/glossary" element={<Glossary />} />
+          <Route path="/achievements" element={<Achievements />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

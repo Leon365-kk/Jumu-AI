@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { Layout } from '@/components/Layout';
-import { Flame, BookOpen, Languages, Star, Trophy, ArrowRight, Book, Edit3, Sprout, BarChart3, BookMarked, Zap, Calculator, Library, Target, TrendingUp } from 'lucide-react';
+import { Flame, BookOpen, Languages, Star, Trophy, ArrowRight, Book, Edit3, Sprout, BarChart3, BookMarked, Zap, Calculator, Library, Target, TrendingUp, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { usePreferences } from '@/lib/PreferencesContext';
@@ -319,6 +319,7 @@ export default function Dashboard() {
                 { title: 'Focus Zone', desc: 'Calm your mind sessions.', icon: Zap, to: '/focus-zone', category: 'all' },
                 { title: t('mathHelper'), desc: t('mathHelperDesc'), icon: Calculator, to: '/math', category: 'math' },
                 { title: t('glossary'), desc: t('glossaryDesc'), icon: BookMarked, to: '/glossary', category: 'reading' },
+                { title: 'Achievements', desc: 'View your badges and rewards.', icon: Award, to: '/achievements', category: 'all' },
               ].filter(action => learningFocus === 'all' || action.category === 'all' || action.category === learningFocus).map((action, i) => (
                 <div key={i} className="h-full">
                   <TapEffect className="h-full">

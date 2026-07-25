@@ -60,28 +60,22 @@ export async function generateAIContent(request: GeminiRequest): Promise<GeminiR
     return await response.json();
   } catch (error: any) {
     console.error('AI Service Error:', { endpoint, error });
-    
-    // Parse structured error if available
+
     let errorMessage = error.message || 'Failed to connect to AI service';
-    let errorType = 'network_error';
-    
+    let errorType: 'network_error' | 'timeout_error' | 'api_error' | 'server_error' | 'auth_error' = 'network_error';
+
     try {
       const parsed = JSON.parse(error.message);
       errorMessage = parsed.message || errorMessage;
       errorType = parsed.type || errorType;
     } catch {
-      // Not a structured error, use defaults
       if (error.message?.includes('fetch') || error.message?.includes('network')) {
         errorType = 'network_error';
       } else if (error.message?.includes('timeout')) {
         errorType = 'timeout_error';
       }
     }
-    
-    return {
-      text: '',
-      error: errorMessage,
-      errorType: errorType as 'network_error' | 'timeout_error' | 'api_error' | 'server_error' | 'auth_error'
-    };
+
+    throw new Error(errorMessage);
   }
 }
