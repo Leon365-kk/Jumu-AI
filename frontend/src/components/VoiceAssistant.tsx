@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Mic, MicOff, X, Volume2, VolumeX, Sparkles, Loader2, User, Bot } from 'lucide-react';
 import { generateAIContent } from '@/services/aiService';
 import { useApp } from '@/lib/AppContext';
+import { mobileVoiceService } from '@/services/mobileVoiceService';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -22,45 +23,21 @@ export function VoiceAssistant() {
   const synthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      
-      // Map app language to BCP 47 language tags
-      const langMap = {
-        en: 'en-US',
-        sw: 'sw-KE',
-        es: 'es-ES'
-      };
-      recognition.lang = langMap[language as keyof typeof langMap] || 'en-US';
-
-      recognition.onstart = () => {
-        setIsListening(true);
-        setTranscript('');
-      };
-
-      recognition.onresult = (event: any) => {
-        const current = event.resultIndex;
-        const resultTranscript = event.results[current][0].transcript;
-        setTranscript(resultTranscript);
-        // If this is a final result, process it
-        if (event.results[current].isFinal) {
-          processVoiceCommand(resultTranscript);
+    // Use mobile voice service for Capacitor compatibility
+    if (mobileVoiceService.isSupported()) {
+      mobileVoiceService.startListening(
+        language,
+        (result) => {
+          setTranscript(result.transcript);
+          if (result.isFinal) {
+            processVoiceCommand(result.transcript);
+          }
+        },
+        (error) => {
+          console.error('Speech recognition error:', error);
+          setIsListening(false);
         }
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-      };
-
-      recognitionRef.current = recognition;
+      );
     }
   }, [language]);
 
@@ -94,15 +71,28 @@ export function VoiceAssistant() {
 
   const startListening = () => {
     stopSpeaking();
-    if (recognitionRef.current && !isListening) {
-      recognitionRef.current.start();
+    if (mobileVoiceService.isSupported() && !isListening) {
+      setIsListening(true);
+      setTranscript('');
+      mobileVoiceService.startListening(
+        language,
+        (result) => {
+          setTranscript(result.transcript);
+          if (result.isFinal) {
+            processVoiceCommand(result.transcript);
+          }
+        },
+        (error) => {
+          console.error('Speech recognition error:', error);
+          setIsListening(false);
+        }
+      );
     }
   };
 
   const stopListening = () => {
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
-    }
+    mobileVoiceService.stopListening();
+    setIsListening(false);
   };
 
   const toggleListening = () => {
