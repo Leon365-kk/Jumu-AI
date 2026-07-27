@@ -23,23 +23,15 @@ export function VoiceAssistant() {
   const synthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
-    // Use mobile voice service for Capacitor compatibility
-    if (mobileVoiceService.isSupported()) {
-      mobileVoiceService.startListening(
-        language,
-        (result) => {
-          setTranscript(result.transcript);
-          if (result.isFinal) {
-            processVoiceCommand(result.transcript);
-          }
-        },
-        (error) => {
-          console.error('Speech recognition error:', error);
-          setIsListening(false);
-        }
-      );
-    }
-  }, [language]);
+    // Check if native speech recognition is available
+    const checkAvailability = async () => {
+      const supported = await mobileVoiceService.isSupported();
+      if (!supported) {
+        console.warn('Native speech recognition not available');
+      }
+    };
+    checkAvailability();
+  }, []);
 
   // Cleanup when assistant closes
   useEffect(() => {
@@ -69,12 +61,15 @@ export function VoiceAssistant() {
     };
   }, []);
 
-  const startListening = () => {
+  const startListening = async () => {
     stopSpeaking();
-    if (mobileVoiceService.isSupported() && !isListening) {
+    const supported = await mobileVoiceService.isSupported();
+    
+    if (supported && !isListening) {
       setIsListening(true);
       setTranscript('');
-      mobileVoiceService.startListening(
+      
+      await mobileVoiceService.startListening(
         language,
         (result) => {
           setTranscript(result.transcript);
@@ -87,11 +82,13 @@ export function VoiceAssistant() {
           setIsListening(false);
         }
       );
+    } else if (!supported) {
+      console.error('Speech recognition not supported');
     }
   };
 
-  const stopListening = () => {
-    mobileVoiceService.stopListening();
+  const stopListening = async () => {
+    await mobileVoiceService.stopListening();
     setIsListening(false);
   };
 

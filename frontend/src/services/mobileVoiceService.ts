@@ -1,7 +1,9 @@
 /**
  * Mobile-compatible voice service for Capacitor apps
- * Uses Web Speech API with fallbacks for mobile devices
+ * Uses native speech recognition plugin for Android/iOS
  */
+
+import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 
 export interface VoiceRecognitionResult {
   transcript: string;
@@ -9,91 +11,95 @@ export interface VoiceRecognitionResult {
 }
 
 export class MobileVoiceService {
-  private recognition: any = null;
   private isListening = false;
   private onResultCallback: ((result: VoiceRecognitionResult) => void) | null = null;
   private onErrorCallback: ((error: string) => void) | null = null;
 
-  constructor() {
-    this.initRecognition();
-  }
-
-  private initRecognition() {
-    // Check if running in Capacitor (mobile)
-    const isCapacitor = !!(window as any).Capacitor;
-    
-    // Web Speech API - works on most modern mobile browsers
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
-    if (SpeechRecognition) {
-      this.recognition = new SpeechRecognition();
-      this.recognition.continuous = false;
-      this.recognition.interimResults = true;
-      
-      this.recognition.onresult = (event: any) => {
-        const current = event.resultIndex;
-        const resultTranscript = event.results[current][0].transcript;
-        const isFinal = event.results[current].isFinal;
-        
-        if (this.onResultCallback) {
-          this.onResultCallback({ transcript: resultTranscript, isFinal });
-        }
-      };
-
-      this.recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        this.isListening = false;
-        
-        if (this.onErrorCallback) {
-          this.onErrorCallback(event.error);
-        }
-      };
-
-      this.recognition.onend = () => {
-        this.isListening = false;
-      };
+  async isSupported(): Promise<boolean> {
+    try {
+      const { available } = await SpeechRecognition.available();
+      return available;
+    } catch {
+      return false;
     }
   }
 
-  isSupported(): boolean {
-    return !!this.recognition;
-  }
-
-  startListening(
+  async startListening(
     language: string = 'en-US',
     onResult: (result: VoiceRecognitionResult) => void,
     onError: (error: string) => void
   ) {
-    if (!this.recognition) {
-      onError('Speech recognition not supported on this device');
-      return;
-    }
-
-    this.onResultCallback = onResult;
-    this.onErrorCallback = onError;
-    
-    // Map language codes
-    const langMap: Record<string, string> = {
-      en: 'en-US',
-      sw: 'sw-KE',
-      es: 'es-ES'
-    };
-    
-    this.recognition.lang = langMap[language] || 'en-US';
-    
     try {
-      this.recognition.start();
+      const { available } = await SpeechRecognition.available();
+      
+      if (!available) {
+        onError('Speech recognition not available on this device');
+        return;
+      }
+
+      this.onResultCallback = onResult;
+      this.onErrorCallback = onError;
+      
+      // Map language codes
+      const langMap: Record<string, string> = {
+        en: 'en-US',
+        sw: 'sw-KE',
+        es: 'es-ES'
+      };
+      
+      const lang = langMap[language] || 'en-US';
+
+      await SpeechRecognition.start({
+        language: lang,
+        maxResults: 10,
+        prompt: 'Speak now',
+        partialResults: true,
+        popup: false
+      });
+
       this.isListening = true;
+
+      // Listen for results
+      SpeechRecognition.addListener('partialResults', (data: any) => {
+        if (data.matches && data.matches.length > 0) {
+          const transcript = data.matches[0];
+          if (this.onResultCallback) {
+            this.onResultCallback({ transcript, isFinal: false });
+          }
+        }
+      });
+
+      SpeechRecognition.addListener('results', (data: any) => {
+        if (data.matches && data.matches.length > 0) {
+          const transcript = data.matches[0];
+          if (this.onResultCallback) {
+            this.onResultCallback({ transcript, isFinal: true });
+          }
+        }
+        this.isListening = false;
+      });
+
+      SpeechRecognition.addListener('error', (data: any) => {
+        console.error('Speech recognition error:', data);
+        this.isListening = false;
+        if (this.onErrorCallback) {
+          onError(data.error || 'Speech recognition error');
+        }
+      });
+
     } catch (error) {
       console.error('Failed to start speech recognition:', error);
+      this.isListening = false;
       onError('Failed to start speech recognition');
     }
   }
 
-  stopListening() {
-    if (this.recognition && this.isListening) {
-      this.recognition.stop();
+  async stopListening() {
+    try {
+      await SpeechRecognition.stop();
       this.isListening = false;
+    } catch (error) {
+      console.error('Failed to stop speech recognition:', error);
     }
   }
 
